@@ -7,127 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-interface Crop {
-  id: string;
+interface CropScore {
   name: string;
-  description: string;
-  growth_duration_days: number;
-  optimal_ph_min: number;
-  optimal_ph_max: number;
-  optimal_temp_min: number;
-  optimal_temp_max: number;
-  optimal_humidity_min: number;
-  optimal_humidity_max: number;
-  optimal_rainfall_min: number;
-  optimal_rainfall_max: number;
-  suitable_soil_types: string[];
-  season: string;
-}
-
-interface NeuralNetworkWeights {
-  layer1: number[][];
-  layer1Bias: number[];
-  layer2: number[][];
-  layer2Bias: number[];
-  layer3: number[][];
-  layer3Bias: number[];
-  layer4: number[][];
-  layer4Bias: number[];
-}
-
-const soilTypeMap: { [key: string]: number } = {
-  "Sandy": 0,
-  "Loamy": 1,
-  "Clay": 2,
-  "Black": 3,
-  "Alluvial": 4,
-  "Sandy Loam": 5,
-};
-
-const seasonMap: { [key: string]: number } = {
-  "Kharif": 0,
-  "Rabi": 1,
-  "Year-round": 2,
-};
-
-const cropIdMap = [
-  "Rice",
-  "Wheat",
-  "Cotton",
-  "Sugarcane",
-  "Maize",
-  "Soybean",
-  "Potato",
-  "Tomato",
-];
-
-function relu(x: number): number {
-  return Math.max(0, x);
-}
-
-function softmax(arr: number[]): number[] {
-  const max = Math.max(...arr);
-  const exps = arr.map(x => Math.exp(x - max));
-  const sum = exps.reduce((a, b) => a + b, 0);
-  return exps.map(x => x / sum);
-}
-
-function matmul(input: number[], weights: number[][], bias: number[]): number[] {
-  return weights.map((row, i) => {
-    const sum = row.reduce((acc, w, j) => acc + w * input[j], 0) + bias[i];
-    return sum;
-  });
-}
-
-function normalizeInput(soil_ph: number, temperature: number, humidity: number, rainfall: number, soil_type: number, season: number): number[] {
-  return [
-    soil_ph / 14,
-    temperature / 50,
-    humidity / 100,
-    rainfall / 2500,
-    soil_type / 6,
-    season / 3,
-  ];
-}
-
-function predictCrops(input: number[]): number[] {
-  const pretrainedWeights: NeuralNetworkWeights = {
-    layer1: Array(128).fill(0).map(() => Array(6).fill(0).map(() => Math.random() * 0.1 - 0.05)),
-    layer1Bias: Array(128).fill(0),
-    layer2: Array(64).fill(0).map(() => Array(128).fill(0).map(() => Math.random() * 0.1 - 0.05)),
-    layer2Bias: Array(64).fill(0),
-    layer3: Array(32).fill(0).map(() => Array(64).fill(0).map(() => Math.random() * 0.1 - 0.05)),
-    layer3Bias: Array(32).fill(0),
-    layer4: Array(8).fill(0).map(() => Array(32).fill(0).map(() => Math.random() * 0.1 - 0.05)),
-    layer4Bias: Array(8).fill(0),
-  };
-
-  let x = input;
-
-  x = matmul(x, pretrainedWeights.layer1, pretrainedWeights.layer1Bias);
-  x = x.map(relu);
-
-  x = matmul(x, pretrainedWeights.layer2, pretrainedWeights.layer2Bias);
-  x = x.map(relu);
-
-  x = matmul(x, pretrainedWeights.layer3, pretrainedWeights.layer3Bias);
-  x = x.map(relu);
-
-  x = matmul(x, pretrainedWeights.layer4, pretrainedWeights.layer4Bias);
-  x = softmax(x);
-
-  return x;
-}
-
-function generateReasoning(confidence: number): string {
-  if (confidence >= 80) {
-    return "Excellent match for conditions";
-  } else if (confidence >= 60) {
-    return "Good match for conditions";
-  } else if (confidence >= 40) {
-    return "Fair match for conditions";
-  }
-  return "Possible option";
+  score: number;
 }
 
 Deno.serve(async (req: Request) => {
@@ -143,22 +25,7 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const input = await req.json();
-    const { soil_ph, soil_type, temperature, humidity, rainfall, season } = input;
-
-    const soilTypeEncoded = soilTypeMap[soil_type] ?? 0;
-    const seasonEncoded = seasonMap[season] ?? 0;
-
-    const normalizedInput = normalizeInput(
-      soil_ph,
-      temperature,
-      humidity,
-      rainfall,
-      soilTypeEncoded,
-      seasonEncoded
-    );
-
-    const predictions = predictCrops(normalizedInput);
+    const { soil_ph, soil_type, temperature, humidity, air_quality, rainfall, season } = await req.json();
 
     const { data: crops, error } = await supabase
       .from("crops")
@@ -166,27 +33,86 @@ Deno.serve(async (req: Request) => {
 
     if (error) throw error;
 
-    const recommendations = predictions
-      .map((confidence, cropIndex) => {
-        const cropName = cropIdMap[cropIndex];
-        const crop = crops.find((c: any) => c.name === cropName);
+    const scoredCrops: CropScore[] = crops.map((crop: any) => {
+      let score = 0;
+      let reasons: string[] = [];
 
-        if (!crop) return null;
+      if (soil_ph >= crop.optimal_ph_min && soil_ph <= crop.optimal_ph_max) {
+        score += 25;
+        reasons.push("Optimal pH range");
+      } else {
+        const phDiff = Math.min(
+          Math.abs(soil_ph - crop.optimal_ph_min),
+          Math.abs(soil_ph - crop.optimal_ph_max)
+        );
+        score += Math.max(0, 25 - phDiff * 5);
+      }
 
-        return {
-          name: crop.name,
-          confidence: Math.round(confidence * 100),
-          reason: generateReasoning(confidence * 100),
-          description: crop.description,
-          growth_duration: crop.growth_duration_days,
-        };
-      })
-      .filter((rec) => rec !== null)
-      .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 5);
+      if (crop.suitable_soil_types && crop.suitable_soil_types.includes(soil_type)) {
+        score += 20;
+        reasons.push("Compatible soil type");
+      }
+
+      if (temperature >= crop.optimal_temp_min && temperature <= crop.optimal_temp_max) {
+        score += 20;
+        reasons.push("Ideal temperature");
+      } else {
+        const tempDiff = Math.min(
+          Math.abs(temperature - crop.optimal_temp_min),
+          Math.abs(temperature - crop.optimal_temp_max)
+        );
+        score += Math.max(0, 20 - tempDiff * 2);
+      }
+
+      if (humidity >= crop.optimal_humidity_min && humidity <= crop.optimal_humidity_max) {
+        score += 15;
+        reasons.push("Suitable humidity");
+      } else {
+        const humDiff = Math.min(
+          Math.abs(humidity - crop.optimal_humidity_min),
+          Math.abs(humidity - crop.optimal_humidity_max)
+        );
+        score += Math.max(0, 15 - humDiff * 0.5);
+      }
+
+      if (rainfall >= crop.optimal_rainfall_min && rainfall <= crop.optimal_rainfall_max) {
+        score += 15;
+        reasons.push("Adequate rainfall");
+      } else {
+        const rainDiff = Math.min(
+          Math.abs(rainfall - crop.optimal_rainfall_min),
+          Math.abs(rainfall - crop.optimal_rainfall_max)
+        );
+        score += Math.max(0, 15 - rainDiff * 0.01);
+      }
+
+      if (crop.season === season || crop.season === "Year-round") {
+        score += 5;
+        reasons.push("Appropriate season");
+      }
+
+      return {
+        name: crop.name,
+        score: Math.min(100, Math.max(0, score)),
+        reason: reasons.join(", ") || "Check growing conditions",
+        description: crop.description,
+        growth_duration: crop.growth_duration_days,
+      };
+    });
+
+    const topRecommendations = scoredCrops
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5)
+      .map((crop) => ({
+        name: crop.name,
+        confidence: crop.score,
+        reason: crop.reason,
+        description: crop.description,
+        growth_duration: crop.growth_duration,
+      }));
 
     return new Response(
-      JSON.stringify({ recommendations }),
+      JSON.stringify({ recommendations: topRecommendations }),
       {
         headers: {
           ...corsHeaders,
