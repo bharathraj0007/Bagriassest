@@ -26,10 +26,21 @@ interface CropRecommendation {
   reason: string;
 }
 
+interface LocationOption {
+  display_name: string;
+  latitude: number;
+  longitude: number;
+}
+
 export default function Recommendation({ onNavigate }: RecommendationProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [loadingWeather, setLoadingWeather] = useState(false);
+  const [searchingLocations, setSearchingLocations] = useState(false);
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [recommendations, setRecommendations] = useState<CropRecommendation[]>([]);
   const [formData, setFormData] = useState<FormData>({
     soilPh: '',
@@ -47,6 +58,63 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
   const soilTypes = ['Clay', 'Sandy', 'Loamy', 'Black', 'Alluvial', 'Sandy Loam'];
   const seasons = ['Kharif', 'Rabi', 'Zaid', 'Year-round'];
 
+  const searchLocations = async (query: string) => {
+    if (query.length < 2) {
+      setLocationOptions([]);
+      return;
+    }
+
+    setSearchingLocations(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/weather-data?action=search&query=${encodeURIComponent(query)}`;
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+      setLocationOptions(data.results || []);
+      setShowLocationDropdown(true);
+    } catch (error) {
+      console.error('Location search error:', error);
+      setLocationOptions([]);
+    } finally {
+      setSearchingLocations(false);
+    }
+  };
+
+  const selectLocation = async (location: LocationOption) => {
+    setFormData((prev) => ({
+      ...prev,
+      location: location.display_name,
+      latitude: location.latitude.toString(),
+      longitude: location.longitude.toString(),
+    }));
+    setLocationSearch('');
+    setLocationOptions([]);
+    setShowLocationDropdown(false);
+
+    await fetchWeatherData(location.latitude, location.longitude);
+  };
+
+  const fetchWeatherData = async (latitude: number, longitude: number) => {
+    setLoadingWeather(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/weather-data?action=weather&latitude=${latitude}&longitude=${longitude}`;
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      setFormData((prev) => ({
+        ...prev,
+        temperature: Math.round(data.temperature).toString(),
+        humidity: Math.round(data.humidity).toString(),
+        airQuality: Math.round(data.aqi).toString(),
+        rainfall: (Math.round(data.rainfall * 10) / 10).toString(),
+      }));
+    } catch (error) {
+      console.error('Weather fetch error:', error);
+      alert('Could not fetch weather data. Please enter manually.');
+    } finally {
+      setLoadingWeather(false);
+    }
+  };
+
   const fetchLocation = () => {
     if (!navigator.geolocation) {
       alert('Geolocation is not supported by your browser');
@@ -57,28 +125,7 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
-        setFormData((prev) => ({
-          ...prev,
-          latitude: latitude.toString(),
-          longitude: longitude.toString(),
-        }));
-
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
-          );
-          const data = await response.json();
-          const locationName = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-          setFormData((prev) => ({
-            ...prev,
-            location: locationName,
-          }));
-        } catch (error) {
-          setFormData((prev) => ({
-            ...prev,
-            location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-          }));
-        }
+        await fetchWeatherData(latitude, longitude);
         setFetchingLocation(false);
       },
       (error) => {
@@ -210,7 +257,7 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                 <div>
                   <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                     <Thermometer className="h-5 w-5 mr-2 text-red-600" />
-                    Temperature
+                    Temperature {loadingWeather && <span className="ml-1 text-xs text-blue-600">auto-updating...</span>}
                   </label>
                   <input
                     type="number"
@@ -218,7 +265,8 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                     required
                     value={formData.temperature}
                     onChange={(e) => handleInputChange('temperature', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={loadingWeather}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                     placeholder="°C"
                   />
                 </div>
@@ -226,7 +274,7 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                 <div>
                   <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                     <Droplets className="h-5 w-5 mr-2 text-blue-600" />
-                    Humidity
+                    Humidity {loadingWeather && <span className="ml-1 text-xs text-blue-600">auto-updating...</span>}
                   </label>
                   <input
                     type="number"
@@ -236,7 +284,8 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                     required
                     value={formData.humidity}
                     onChange={(e) => handleInputChange('humidity', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={loadingWeather}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                     placeholder="%"
                   />
                 </div>
@@ -246,7 +295,7 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                 <div>
                   <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                     <Wind className="h-5 w-5 mr-2 text-gray-600" />
-                    Air Quality (AQI)
+                    Air Quality (AQI) {loadingWeather && <span className="ml-1 text-xs text-blue-600">auto-updating...</span>}
                   </label>
                   <input
                     type="number"
@@ -256,7 +305,8 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                     required
                     value={formData.airQuality}
                     onChange={(e) => handleInputChange('airQuality', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={loadingWeather}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                     placeholder="0-500"
                   />
                 </div>
@@ -264,7 +314,7 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                 <div>
                   <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                     <Droplets className="h-5 w-5 mr-2 text-cyan-600" />
-                    Rainfall (mm)
+                    Rainfall (mm) {loadingWeather && <span className="ml-1 text-xs text-blue-600">auto-updating...</span>}
                   </label>
                   <input
                     type="number"
@@ -273,7 +323,8 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                     required
                     value={formData.rainfall}
                     onChange={(e) => handleInputChange('rainfall', e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    disabled={loadingWeather}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
                     placeholder="mm"
                   />
                 </div>
@@ -299,28 +350,64 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                 </select>
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <MapPin className="h-5 w-5 mr-2 text-red-600" />
                   Location
                 </label>
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Enter location or use GPS"
-                  />
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={locationSearch}
+                      onChange={(e) => {
+                        setLocationSearch(e.target.value);
+                        searchLocations(e.target.value);
+                      }}
+                      onFocus={() => locationOptions.length > 0 && setShowLocationDropdown(true)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      placeholder="Search location..."
+                    />
+                    {searchingLocations && (
+                      <div className="absolute right-3 top-3 text-gray-400">
+                        <div className="animate-spin">⟳</div>
+                      </div>
+                    )}
+                    {showLocationDropdown && locationOptions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+                        {locationOptions.map((loc, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => selectLocation(loc)}
+                            className="w-full text-left px-4 py-2 hover:bg-green-50 border-b last:border-b-0 transition"
+                          >
+                            <div className="font-medium text-gray-900 text-sm">{loc.display_name.split(',')[0]}</div>
+                            <div className="text-xs text-gray-500">{loc.display_name}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={fetchLocation}
-                    disabled={fetchingLocation}
+                    disabled={fetchingLocation || loadingWeather}
                     className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                   >
-                    {fetchingLocation ? 'Fetching...' : 'GPS'}
+                    {fetchingLocation || loadingWeather ? 'Loading...' : 'GPS'}
                   </button>
                 </div>
+                {formData.location && (
+                  <div className="mt-2 text-sm text-green-600 font-medium">
+                    Selected: {formData.location}
+                  </div>
+                )}
+                {loadingWeather && (
+                  <div className="mt-2 text-sm text-blue-600 animate-pulse">
+                    Updating weather data...
+                  </div>
+                )}
               </div>
 
               <button
