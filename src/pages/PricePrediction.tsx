@@ -74,7 +74,7 @@ export default function PricePrediction({ onNavigate }: PricePredictionProps) {
       if (result.prediction) {
         setPrediction(result.prediction);
 
-        await supabase.from('price_predictions').insert({
+        const { error } = await supabase.from('price_predictions').insert({
           user_id: user.id,
           crop_name: cropName,
           current_price: result.prediction.current_price,
@@ -82,6 +82,10 @@ export default function PricePrediction({ onNavigate }: PricePredictionProps) {
           prediction_date: result.prediction.prediction_date,
           market_location: marketLocation,
         });
+        if (error) {
+          console.error('Error saving prediction:', error);
+          alert('Error saving prediction. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error getting price prediction:', error);
