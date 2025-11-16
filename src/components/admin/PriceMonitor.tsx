@@ -6,11 +6,8 @@ import {
   TrendingDown,
   DollarSign,
   Activity,
-  Calendar,
-  Filter,
   Download,
   RefreshCw,
-  AlertCircle,
   CheckCircle,
   Info
 } from 'lucide-react';
