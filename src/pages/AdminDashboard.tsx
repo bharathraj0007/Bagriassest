@@ -11,13 +11,10 @@ import {
   LogOut,
   Menu,
   X,
-  Database,
   BarChart3,
   Globe,
   HeadphonesIcon,
   Shield,
-  Calendar,
-  Package,
   Activity
 } from 'lucide-react';
 import CropManager from '../components/admin/CropManager';
