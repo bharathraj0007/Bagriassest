@@ -46,6 +46,10 @@ function AppContent() {
         return <Marketing onNavigate={setCurrentPage} />;
       case 'support':
         return <Support onNavigate={setCurrentPage} />;
+      case 'admin-login':
+        return <AdminLogin onNavigate={setCurrentPage} />;
+      case 'admin-dashboard':
+        return <AdminDashboard onNavigate={setCurrentPage} />;
       default:
         return <Home onNavigate={setCurrentPage} />;
     }
