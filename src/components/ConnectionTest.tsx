@@ -77,7 +77,7 @@ export default function ConnectionTest() {
 
     // Test database connection
     try {
-      const { data, error } = await supabase.from('profiles').select('id').limit(1);
+      const { error } = await supabase.from('profiles').select('id').limit(1);
       if (error) {
         setStatus(prev => ({ ...prev, database: 'error' }));
       } else {
