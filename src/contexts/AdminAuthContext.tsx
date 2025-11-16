@@ -72,43 +72,85 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     try {
+      console.log('Attempting admin login for:', email);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
-        return { error: error.message };
-      }
+        console.error('Admin auth error:', error);
 
-      if (data.user) {
-        // Check if user has admin role
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role, full_name')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError || !profile?.role || !['admin', 'super_admin'].includes(profile.role)) {
-          await supabase.auth.signOut();
-          return { error: 'Access denied. Admin privileges required.' };
+        // Provide more specific error messages
+        if (error.message.includes('Invalid login credentials')) {
+          return { error: 'Invalid email or password.' };
+        } else if (error.message.includes('Email not confirmed')) {
+          return { error: 'Email not confirmed.' };
+        } else if (error.message.includes('Too many requests')) {
+          return { error: 'Too many login attempts. Please try again later.' };
+        } else if (error.message.includes('User not found')) {
+          return { error: 'User not found. Please check the email address.' };
+        } else {
+          return { error: `Login failed: ${error.message}` };
         }
-
-        const adminData: Admin = {
-          id: data.user.id,
-          email: data.user.email!,
-          full_name: profile.full_name || 'Admin',
-          role: profile.role as 'admin' | 'super_admin',
-          created_at: data.user.created_at
-        };
-
-        setAdmin(adminData);
-        return { error: null };
       }
 
-      return { error: 'Login failed' };
+      if (!data.user) {
+        console.error('No user data returned from auth');
+        return { error: 'Login failed: No user data received.' };
+      }
+
+      console.log('User authenticated successfully:', data.user.id);
+
+      // Check if user has admin role
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role, full_name, email, is_active')
+        .eq('id', data.user.id)
+        .single();
+
+      console.log('Profile data:', profile);
+      console.log('Profile error:', profileError);
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        await supabase.auth.signOut();
+        return { error: 'Admin profile not found. Please contact system administrator.' };
+      }
+
+      if (!profile) {
+        console.error('No profile found for user');
+        await supabase.auth.signOut();
+        return { error: 'Admin profile not found. Please contact system administrator.' };
+      }
+
+      if (!profile.is_active) {
+        console.error('Admin account is deactivated');
+        await supabase.auth.signOut();
+        return { error: 'Admin account is deactivated.' };
+      }
+
+      if (!profile.role || !['admin', 'super_admin'].includes(profile.role)) {
+        console.error('User does not have admin role:', profile.role);
+        await supabase.auth.signOut();
+        return { error: 'Access denied. Admin privileges required.' };
+      }
+
+      const adminData: Admin = {
+        id: data.user.id,
+        email: data.user.email!,
+        full_name: profile.full_name || 'Admin',
+        role: profile.role as 'admin' | 'super_admin',
+        created_at: data.user.created_at
+      };
+
+      console.log('Admin login successful:', adminData);
+      setAdmin(adminData);
+      return { error: null };
     } catch (error) {
-      return { error: 'An unexpected error occurred' };
+      console.error('Unexpected error during admin login:', error);
+      return { error: 'An unexpected error occurred during login.' };
     }
   };
 
