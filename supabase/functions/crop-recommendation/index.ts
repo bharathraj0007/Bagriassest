@@ -682,6 +682,540 @@ function calculateSoilSimilarity(inputSoil: string, suitableSoils: string[]): nu
   return Math.min(1.0, maxScore);
 }
 
+// === ADVANCED ALGORITHM HELPER FUNCTIONS ===
+
+// Crop type identification functions
+function isRiceCrop(cropName: string): boolean {
+  const riceCrops = ["Rice", "Basmati Rice", "Jasmine Rice"];
+  return riceCrops.some(rice => cropName.toLowerCase().includes(rice.toLowerCase()));
+}
+
+function isSpiceCrop(cropName: string): boolean {
+  const spiceCrops = ["Black Pepper", "Cardamom", "Turmeric", "Ginger", "Clove", "Cinnamon"];
+  return spiceCrops.some(spice => cropName.toLowerCase().includes(spice.toLowerCase()));
+}
+
+function isMilletCrop(cropName: string): boolean {
+  const milletCrops = ["Finger Millet", "Pearl Millet", "Foxtail Millet", "Little Millet"];
+  return milletCrops.some(millet => cropName.toLowerCase().includes(millet.toLowerCase()));
+}
+
+// Agricultural data functions
+function getSoilWaterCharacteristics(soilType: string): { water_retention: number; drainage: number } {
+  const characteristics: Record<string, { water_retention: number; drainage: number }> = {
+    "Clay": { water_retention: 0.9, drainage: 0.2 },
+    "Sandy": { water_retention: 0.3, drainage: 0.9 },
+    "Loamy": { water_retention: 0.6, drainage: 0.7 },
+    "Black": { water_retention: 0.8, drainage: 0.3 },
+    "Alluvial": { water_retention: 0.7, drainage: 0.6 },
+    "Sandy Loam": { water_retention: 0.5, drainage: 0.8 },
+    "Red": { water_retention: 0.6, drainage: 0.7 },
+    "Laterite": { water_retention: 0.4, drainage: 0.8 },
+    "Coastal": { water_retention: 0.4, drainage: 0.9 },
+    "Forest": { water_retention: 0.7, drainage: 0.7 },
+    "Volcanic": { water_retention: 0.6, drainage: 0.8 }
+  };
+  return characteristics[soilType] || { water_retention: 0.5, drainage: 0.5 };
+}
+
+function getCropWaterRequirements(cropName: string): { requirement: string; efficiency: number } {
+  const waterRequirements: Record<string, { requirement: string; efficiency: number }> = {
+    "Rice": { requirement: "high", efficiency: 0.6 },
+    "Wheat": { requirement: "medium", efficiency: 0.8 },
+    "Cotton": { requirement: "medium", efficiency: 0.7 },
+    "Sugarcane": { requirement: "high", efficiency: 0.7 },
+    "Maize": { requirement: "medium", efficiency: 0.8 },
+    "Soybean": { requirement: "medium", efficiency: 0.8 },
+    "Black Pepper": { requirement: "high", efficiency: 0.7 },
+    "Cardamom": { requirement: "high", efficiency: 0.6 },
+    "Coconut": { requirement: "high", efficiency: 0.7 },
+    "Finger Millet": { requirement: "low", efficiency: 0.9 },
+    "Pearl Millet": { requirement: "low", efficiency: 0.95 }
+  };
+  return waterRequirements[cropName] || { requirement: "medium", efficiency: 0.8 };
+}
+
+function getCropGDDRequirement(cropName: string): number {
+  const gddRequirements: Record<string, number> = {
+    "Rice": 2500,
+    "Wheat": 1800,
+    "Cotton": 2200,
+    "Maize": 2700,
+    "Soybean": 2000,
+    "Tomato": 2200,
+    "Potato": 1600,
+    "Black Pepper": 2800,
+    "Cardamom": 2600,
+    "Coffee": 3000,
+    "Finger Millet": 1400,
+    "Pearl Millet": 1200
+  };
+  return gddRequirements[cropName] || 2000;
+}
+
+function calculateSeasonalGDD(temperature: number, season: string): number {
+  const seasonLengths: Record<string, number> = {
+    "Kharif": 120,
+    "Rabi": 90,
+    "Summer": 75,
+    "Winter": 60,
+    "Monsoon": 105,
+    "Year-round": 180
+  };
+
+  const baseTemp = 10; // Base temperature for GDD calculation
+  const dailyGDD = Math.max(0, temperature - baseTemp);
+  return dailyGDD * (seasonLengths[season] || 90);
+}
+
+function calculateDiseaseRisk(humidity: number, cropName: string): number {
+  let baseRisk = 0;
+
+  // Crops susceptible to fungal diseases in high humidity
+  const susceptibleCrops = ["Tomato", "Potato", "Grapes", "Rice", "Wheat"];
+  if (susceptibleCrops.includes(cropName)) {
+    baseRisk = 0.3;
+  }
+
+  // Humidity-based risk calculation
+  if (humidity > 85) return Math.min(0.9, baseRisk + 0.6);
+  if (humidity > 75) return Math.min(0.7, baseRisk + 0.4);
+  if (humidity > 65) return Math.min(0.5, baseRisk + 0.2);
+  return baseRisk;
+}
+
+function calculateAirQualityPenalty(aqi: number, crop: any): number {
+  // Sensitive crops list
+  const sensitiveCrops = ["Coffee", "Tea", "Spices", "Medicinal Herbs"];
+  const isSensitive = sensitiveCrops.some(sensitive =>
+    crop.name.toLowerCase().includes(sensitive.toLowerCase())
+  );
+
+  let penalty = 0;
+  if (aqi > 300) penalty = 0.4;  // Hazardous
+  else if (aqi > 200) penalty = 0.25;  // Very Unhealthy
+  else if (aqi > 150) penalty = 0.15;  // Unhealthy for Sensitive Groups
+  else if (aqi > 100) penalty = 0.08;  // Moderate
+
+  return isSensitive ? penalty * 1.5 : penalty;
+}
+
+// Economic calculation functions
+function getCropMarketValue(cropName: string): number {
+  const marketValues: Record<string, number> = {
+    "Rice": 25000,
+    "Wheat": 22000,
+    "Cotton": 60000,
+    "Sugarcane": 3000,
+    "Maize": 18000,
+    "Soybean": 45000,
+    "Potato": 15000,
+    "Tomato": 20000,
+    "Black Pepper": 300000,
+    "Cardamom": 1200000,
+    "Coffee": 250000,
+    "Tea": 150000,
+    "Turmeric": 80000,
+    "Ginger": 60000,
+    "Coconut": 40000
+  };
+  return marketValues[cropName] || 20000; // Default value in INR per ton
+}
+
+function calculateYieldPotential(crop: any, input: EnvironmentalFactors): number {
+  // Base yield by crop category
+  const baseYields: Record<string, number> = {
+    "Rice": 3.5,  // tons per hectare
+    "Wheat": 3.0,
+    "Cotton": 1.5,
+    "Maize": 4.0,
+    "Soybean": 1.8,
+    "Spices": 0.8,
+    "Vegetables": 15.0,
+    "Fruits": 8.0
+  };
+
+  // Determine crop category
+  let category = "Others";
+  if (isRiceCrop(crop.name)) category = "Rice";
+  else if (crop.name === "Wheat") category = "Wheat";
+  else if (crop.name === "Cotton") category = "Cotton";
+  else if (crop.name === "Maize") category = "Maize";
+  else if (crop.name === "Soybean") category = "Soybean";
+  else if (isSpiceCrop(crop.name)) category = "Spices";
+  else if (["Tomato", "Potato"].includes(crop.name)) category = "Vegetables";
+  else if (["Mango", "Banana", "Coconut"].includes(crop.name)) category = "Fruits";
+
+  const baseYield = baseYields[category] || 2.0;
+
+  // Environmental adjustment factors
+  const tempFactor = input.temperature >= 20 && input.temperature <= 30 ? 1.0 : 0.8;
+  const rainfallFactor = input.rainfall >= 1000 && input.rainfall <= 2000 ? 1.0 :
+                         input.rainfall < 500 ? 0.6 : 0.8;
+  const phFactor = input.soil_ph >= 6.0 && input.soil_ph <= 7.5 ? 1.0 : 0.85;
+
+  return baseYield * tempFactor * rainfallFactor * phFactor;
+}
+
+function calculateInputCosts(crop: any, input: EnvironmentalFactors): number {
+  const baseCosts: Record<string, number> = {
+    "Rice": 35000,  // INR per hectare
+    "Wheat": 25000,
+    "Cotton": 45000,
+    "Maize": 30000,
+    "Soybean": 28000,
+    "Spices": 60000,
+    "Vegetables": 50000,
+    "Fruits": 40000
+  };
+
+  // Determine category and get base cost
+  let category = "Others";
+  if (isRiceCrop(crop.name)) category = "Rice";
+  else if (crop.name === "Wheat") category = "Wheat";
+  else if (crop.name === "Cotton") category = "Cotton";
+  // ... (similar to yield calculation)
+
+  const baseCost = baseCosts[category] || 30000;
+
+  // Irrigation cost adjustment
+  const irrigationCost = input.rainfall < 800 ? 15000 : input.rainfall < 1200 ? 8000 : 0;
+
+  // Soil amendment cost
+  let amendmentCost = 0;
+  if (input.soil_ph < 5.5) amendmentCost = 5000;  // Lime
+  if (input.soil_ph > 8.0) amendmentCost = 3000;  // Organic matter
+
+  return baseCost + irrigationCost + amendmentCost;
+}
+
+function calculateMarketDemandScore(crop: any): number {
+  const demandScores: Record<string, number> = {
+    "Rice": 0.9,
+    "Wheat": 0.85,
+    "Cotton": 0.75,
+    "Maize": 0.8,
+    "Soybean": 0.7,
+    "Black Pepper": 0.85,
+    "Cardamom": 0.8,
+    "Coffee": 0.75,
+    "Tea": 0.8,
+    "Turmeric": 0.75,
+    "Ginger": 0.7,
+    "Finger Millet": 0.6,
+    "Pearl Millet": 0.55
+  };
+  return demandScores[crop.name] || 0.65;
+}
+
+// Risk assessment functions
+function assessClimateRisk(input: EnvironmentalFactors, crop: any): number {
+  let risk = 0;
+
+  // Temperature stress
+  if (input.temperature < crop.optimal_temp_min - 5 || input.temperature > crop.optimal_temp_max + 5) {
+    risk += 0.3;
+  }
+
+  // Rainfall variability
+  const rainfallDeviation = Math.abs(input.rainfall -
+    (crop.optimal_rainfall_min + crop.optimal_rainfall_max) / 2);
+  if (rainfallDeviation > 1000) risk += 0.25;
+
+  // Season mismatch
+  if (crop.season !== "Year-round" && crop.season !== input.season) {
+    risk += 0.2;
+  }
+
+  return Math.min(1.0, risk);
+}
+
+function assessPestRisk(input: EnvironmentalFactors, crop: any): number {
+  let risk = 0;
+
+  // High humidity increases pest risk
+  if (input.humidity > 80) risk += 0.2;
+
+  // Warm temperatures increase pest activity
+  if (input.temperature > 25 && input.temperature < 35) risk += 0.15;
+
+  // Crop-specific pest susceptibility
+  const susceptibleCrops = ["Tomato", "Potato", "Cotton", "Chili", "Brinjal"];
+  if (susceptibleCrops.includes(crop.name)) risk += 0.1;
+
+  return Math.min(1.0, risk);
+}
+
+function assessMarketRisk(cropName: string): number {
+  const priceVolatility: Record<string, number> = {
+    "Cotton": 0.4,
+    "Spices": 0.35,
+    "Vegetables": 0.3,
+    "Fruits": 0.25,
+    "Grains": 0.15,
+    "Pulses": 0.2
+  };
+
+  // Determine category
+  if (cropName === "Cotton") return priceVolatility.Cotton;
+  if (isSpiceCrop(cropName)) return priceVolatility.Spices;
+  if (["Tomato", "Potato"].includes(cropName)) return priceVolatility.Vegetables;
+  if (["Mango", "Banana", "Coconut"].includes(cropName)) return priceVolatility.Fruits;
+  if (["Rice", "Wheat", "Maize"].includes(cropName)) return priceVolatility.Grains;
+  if (["Red Gram", "Green Gram", "Black Gram"].includes(cropName)) return priceVolatility.Pulses;
+
+  return 0.25; // Default moderate risk
+}
+
+function assessEnvironmentalRisk(input: EnvironmentalFactors, crop: any): number {
+  let risk = 0;
+
+  // Air quality risk
+  if (input.air_quality > 200) risk += 0.15;
+
+  // Soil degradation risk
+  if (input.soil_ph < 4.5 || input.soil_ph > 9.0) risk += 0.2;
+
+  // Water stress risk
+  if (input.rainfall < 300 || input.rainfall > 3500) risk += 0.15;
+
+  return Math.min(1.0, risk);
+}
+
+function assessOperationalRisk(crop: any, input: EnvironmentalFactors): number {
+  let risk = 0;
+
+  // Skill-intensive crops
+  const skillIntensiveCrops = ["Coffee", "Cardamom", "Black Pepper", "Spices"];
+  if (skillIntensiveCrops.includes(crop.name)) risk += 0.1;
+
+  // Labor-intensive crops
+  const laborIntensiveCrops = ["Cotton", "Sugarcane", "Vegetables"];
+  if (laborIntensiveCrops.includes(crop.name)) risk += 0.08;
+
+  return Math.min(1.0, risk);
+}
+
+// Sustainability functions
+function calculateWaterEfficiency(crop: any, rainfall: number): number {
+  const waterNeeds = getCropWaterRequirements(crop.name);
+
+  if (waterNeeds.requirement === "low") return 0.9;
+  if (waterNeeds.requirement === "medium") return 0.75;
+  if (waterNeeds.requirement === "high") {
+    return rainfall >= 1500 ? 0.7 : 0.5;
+  }
+  return 0.7;
+}
+
+function calculateSoilHealthImpact(crop: any, soilType: string): number {
+  // Legumes improve soil health
+  const legumes = ["Soybean", "Green Gram", "Black Gram", "Red Gram", "Peas"];
+  if (legumes.includes(crop.name)) return 0.9;
+
+  // Deep-rooted crops improve soil structure
+  const deepRooted = ["Coconut", "Mango", "Sugarcane", "Cotton"];
+  if (deepRooted.includes(crop.name)) return 0.8;
+
+  // Cover crops
+  const coverCrops = ["Finger Millet", "Pearl Millet"];
+  if (coverCrops.includes(crop.name)) return 0.85;
+
+  return 0.7; // Neutral impact
+}
+
+function calculateBiodiversityImpact(crop: any): number {
+  // Perennial crops support biodiversity
+  const perennials = ["Coconut", "Mango", "Banana", "Coffee", "Tea", "Rubber"];
+  if (perennials.includes(crop.name)) return 0.85;
+
+  // Diverse cropping systems
+  const diverseCrops = ["Spices", "Herbs", "Vegetables"];
+  if (diverseCrops.includes(crop.name)) return 0.8;
+
+  // Monoculture-prone crops
+  const monocultureCrops = ["Rice", "Wheat", "Maize", "Cotton"];
+  if (monocultureCrops.includes(crop.name)) return 0.6;
+
+  return 0.7;
+}
+
+function calculateCarbonFootprint(crop: any): number {
+  // High input crops have higher carbon footprint
+  const highInputCrops = ["Rice", "Cotton", "Sugarcane", "Vegetables"];
+  if (highInputCrops.includes(crop.name)) return 0.7;
+
+  // Low input crops
+  const lowInputCrops = ["Millets", "Pulses", "Oilseeds"];
+  if (lowInputCrops.includes(crop.name)) return 0.3;
+
+  return 0.5; // Medium footprint
+}
+
+function calculateInputDependency(crop: any): number {
+  // Calculate dependency on external inputs
+  let dependency = 0.5; // Base dependency
+
+  // Fertilizer dependency
+  const fertilizerIntensive = ["Rice", "Wheat", "Maize", "Cotton"];
+  if (fertilizerIntensive.includes(crop.name)) dependency += 0.2;
+
+  // Pesticide dependency
+  const pesticideIntensive = ["Cotton", "Vegetables", "Fruits"];
+  if (pesticideIntensive.includes(crop.name)) dependency += 0.2;
+
+  // Irrigation dependency
+  const irrigationIntensive = ["Rice", "Sugarcane", "Banana"];
+  if (irrigationIntensive.includes(crop.name)) dependency += 0.15;
+
+  return Math.min(1.0, dependency);
+}
+
+// Additional helper functions (stubs for now - can be expanded)
+function calculateRotationCompatibility(crop: any, input: EnvironmentalFactors): number {
+  // Simplified rotation compatibility
+  return 0.75; // Medium compatibility for most crops
+}
+
+function calculateClimateAdaptationScore(crop: any, input: EnvironmentalFactors): number {
+  let score = 0.7; // Base adaptation score
+
+  // Temperature tolerance
+  if (crop.name === "Pearl Millet" || crop.name === "Finger Millet") {
+    score += 0.2; // Heat tolerant
+  }
+
+  // Drought tolerance
+  if (crop.name === "Pearl Millet" || crop.name === "Red Gram") {
+    score += 0.15;
+  }
+
+  return Math.min(1.0, score);
+}
+
+// Recommendation generation functions
+function generateRecommendationReasons(features: CropFeatures, validation: any, crop: any): string[] {
+  const reasons: string[] = [];
+
+  if (features.environmental_score > 0.8) {
+    reasons.push("Excellent environmental match");
+  } else if (features.environmental_score > 0.6) {
+    reasons.push("Good environmental conditions");
+  }
+
+  if (features.economic_score > 0.7) {
+    reasons.push("Strong economic potential");
+  }
+
+  if (features.sustainability_score > 0.7) {
+    reasons.push("Sustainable farming choice");
+  }
+
+  if (features.risk_score > 0.8) {
+    reasons.push("Low cultivation risk");
+  }
+
+  if (validation.warnings.length > 0) {
+    reasons.push("Requires careful management");
+  }
+
+  return reasons.length > 0 ? reasons : ["Suitable for cultivation"];
+}
+
+function generateRiskFactors(features: CropFeatures, input: EnvironmentalFactors, crop: any): string[] {
+  const risks: string[] = [];
+
+  if (features.risk_score < 0.5) {
+    risks.push("High cultivation risk");
+  }
+
+  if (input.temperature > 35) {
+    risks.push("Heat stress conditions");
+  }
+
+  if (input.rainfall < 400) {
+    risks.push("Water stress risk");
+  }
+
+  if (input.humidity > 85) {
+    risks.push("Disease pressure high");
+  }
+
+  return risks;
+}
+
+function generateRotationSuggestions(crop: any): string[] {
+  const rotations: Record<string, string[]> = {
+    "Rice": ["Legumes", "Vegetables", "Green manure"],
+    "Wheat": ["Legumes", "Mustard", "Vegetables"],
+    "Cotton": ["Legumes", "Millets", "Vegetables"],
+    "Maize": ["Legumes", "Vegetables", "Oilseeds"]
+  };
+
+  return rotations[crop.name] || ["Legumes", "Vegetables"];
+}
+
+function generateIrrigationRecommendation(crop: any, rainfall: number): string {
+  const waterNeeds = getCropWaterRequirements(crop.name);
+
+  if (waterNeeds.requirement === "low" && rainfall > 800) {
+    return "No irrigation needed";
+  } else if (waterNeeds.requirement === "medium" && rainfall < 600) {
+    return "Supplemental irrigation required";
+  } else if (waterNeeds.requirement === "high" && rainfall < 1200) {
+    return "Regular irrigation essential";
+  } else {
+    return "Monitor soil moisture";
+  }
+}
+
+function generateFertilizerRecommendation(crop: any, soilPH: number): string {
+  if (soilPH < 5.5) {
+    return "Apply lime along with balanced NPK";
+  } else if (soilPH > 7.5) {
+    return "Use organic matter and sulfur-based fertilizers";
+  } else {
+    return "Balanced NPK application recommended";
+  }
+}
+
+function assessPestRiskLevel(riskScore: number, humidity: number): string {
+  if (riskScore < 0.4 || humidity > 85) {
+    return "High - implement integrated pest management";
+  } else if (riskScore < 0.7) {
+    return "Moderate - regular monitoring required";
+  } else {
+    return "Low - standard precautions sufficient";
+  }
+}
+
+function generateMarketOutlook(cropName: string, marketDemand: number): string {
+  if (marketDemand > 0.8) {
+    return "Strong demand and good prices expected";
+  } else if (marketDemand > 0.6) {
+    return "Stable market with moderate returns";
+  } else {
+    return "Variable market, monitor price trends";
+  }
+}
+
+function calculateRecommendationConfidence(features: CropFeatures, validation: any): number {
+  let confidence = 0.7; // Base confidence
+
+  // Environmental match increases confidence
+  if (features.environmental_score > 0.8) confidence += 0.15;
+  else if (features.environmental_score > 0.6) confidence += 0.1;
+
+  // Low risk increases confidence
+  if (features.risk_score > 0.8) confidence += 0.1;
+  else if (features.risk_score < 0.5) confidence -= 0.15;
+
+  // Warnings decrease confidence
+  if (validation.warnings.length > 0) confidence -= 0.1 * validation.warnings.length;
+
+  return Math.max(0.3, Math.min(0.95, confidence));
+}
+
 function calculateSynergy(...scores: number[]): number {
   const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
   const variance = scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length;
