@@ -363,10 +363,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const commoditySymbol = CROP_COMMODITY_MAP[crop_name];
-    if (!commoditySymbol) {
+    // Check if crop is supported in our Indian price database
+    const cropData = INDIAN_CROP_PRICES[crop_name];
+    if (!cropData) {
       return new Response(
-        JSON.stringify({ error: `Crop "${crop_name}" not supported` }),
+        JSON.stringify({ error: `Crop "${crop_name}" not supported. Supported crops: ${Object.keys(INDIAN_CROP_PRICES).slice(0, 10).join(", ")}...` }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -374,16 +375,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Fetch real market data
-    const [commodityData, exchangeRate, historicalPrices] = await Promise.all([
-      fetchCommodityPrice(commoditySymbol),
-      getExchangeRateUSDToINR(),
+    // Fetch market data using our free Indian database
+    const [commodityData, variedPrice, fcaPrice, historicalPrices] = await Promise.all([
+      Promise.resolve(getCropPriceFromDatabase(crop_name)),
+      getRealTimePriceVariation(crop_name, cropData.basePrice),
+      fetchFCAPriceData(crop_name),
       getHistoricalPrices(crop_name)
     ]);
 
     if (!commodityData) {
       return new Response(
-        JSON.stringify({ error: "Unable to fetch current market data" }),
+        JSON.stringify({ error: "Unable to fetch crop price data" }),
         {
           status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -391,10 +393,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Convert USD to INR and apply market factors
+    // Apply market factors and variations to get realistic current price
     const marketFactor = MARKET_FACTORS[market_location] || 1.0;
     const seasonalFactor = getSeasonalFactor(crop_name);
-    const currentPrice = Math.round(commodityData.price * exchangeRate * marketFactor * seasonalFactor);
+
+    // Use a weighted average of base price, real-time variation, and FCA price for accuracy
+    const basePriceWithVariation = variedPrice || commodityData.price;
+    const fcaWeightedPrice = fcaPrice ? (basePriceWithVariation * 0.7 + fcaPrice * 0.3) : basePriceWithVariation;
+    const currentPrice = Math.round(fcaWeightedPrice * marketFactor * seasonalFactor);
 
     // Analyze historical trends
     const { trend, volatility, confidence } = calculateTrendAndVolatility(historicalPrices);
