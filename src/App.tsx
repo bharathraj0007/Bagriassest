@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AdminAuthProvider } from './contexts/AdminAuthContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
@@ -9,6 +10,8 @@ import PricePrediction from './pages/PricePrediction';
 import GovernmentSchemes from './pages/GovernmentSchemes';
 import Marketing from './pages/Marketing';
 import Support from './pages/Support';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
