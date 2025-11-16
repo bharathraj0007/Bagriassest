@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Leaf, User } from 'lucide-react';
+import { Menu, X, Leaf, User, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
@@ -19,6 +19,7 @@ export default function Navbar({ onNavigate, currentPage }: NavbarProps) {
     { name: 'Government Schemes', id: 'government-schemes' },
     { name: 'Marketing', id: 'marketing' },
     { name: 'Support', id: 'support' },
+    { name: 'Admin', id: 'admin-login', icon: Settings, adminOnly: true },
   ];
 
   const handleSignOut = async () => {
@@ -41,19 +42,25 @@ export default function Navbar({ onNavigate, currentPage }: NavbarProps) {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition ${
-                  currentPage === item.id
-                    ? 'bg-green-100 text-green-700'
-                    : 'text-gray-700 hover:bg-green-50 hover:text-green-600'
-                }`}
-              >
-                {item.name}
-              </button>
-            ))}
+            {navItems.map((item) => {
+              // Hide admin-only items if not logged in or not admin
+              if (item.adminOnly && !user) return null;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 ${
+                    currentPage === item.id
+                      ? 'bg-green-100 text-green-700'
+                      : 'text-gray-700 hover:bg-green-50 hover:text-green-600'
+                  }`}
+                >
+                  {item.icon && <item.icon className="h-4 w-4" />}
+                  {item.name}
+                </button>
+              );
+            })}
             {user ? (
               <div className="flex items-center space-x-3 border-l pl-4">
                 <div className="flex items-center space-x-2">
