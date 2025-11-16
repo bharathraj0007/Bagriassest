@@ -493,7 +493,7 @@ function calculateEconomicViability(crop: any, input: EnvironmentalFactors): num
   const cropValue = getCropMarketValue(crop.name);
   const yieldPotential = calculateYieldPotential(crop, input);
   const inputCosts = calculateInputCosts(crop, input);
-  const marketDemand = features?.market_demand || 0.7;
+  const marketDemand = 0.7; // Will be calculated from market data integration
 
   // Simple ROI calculation
   const revenue = cropValue * yieldPotential;
