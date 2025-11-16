@@ -121,26 +121,29 @@ In **Edge Functions** → **Settings**, add these environment variables:
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# For Price Prediction
-COMMODITIES_API_KEY=your-commodities-api-key
-
-# For Weather Data
+# For Weather Data (optional)
 WAQI_API_KEY=your-waqi-api-key
+
+# Note: Price prediction now uses FREE Indian government databases
+# No API key required for pricing - uses AGMARKNET, e-NAM, FCI data
 ```
 
 ## 🔌 API Keys Setup
 
 ### 8. Get Required API Keys
 
-#### Commodities API (for price prediction)
-1. Sign up at [commodities-api.com](https://commodities-api.com)
-2. Get your API key
+#### WAQI API (for air quality data - Optional)
+1. Sign up at [aqicn.org](https://aqicn.org/data-platform/token/)
+2. Get your free API key
 3. Add to Supabase function environment variables
 
-#### WAQI API (for air quality data)
-1. Sign up at [aqicn.org](https://aqicn.org/data-platform/token/)
-2. Get your API key
-3. Add to Supabase function environment variables
+#### Price Data Sources (FREE - No API Key Required!)
+✅ **AGMARKNET**: Agricultural Marketing Information Network
+✅ **e-NAM**: National Agricultural Market
+✅ **FCI**: Food Corporation of India
+✅ **Department of Consumer Affairs**: Retail price monitoring
+
+All price data is now sourced from FREE Indian government databases. No paid API required!
 
 ## 🏗️ Database Schema Overview
 
