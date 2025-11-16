@@ -180,7 +180,7 @@ const AdminDashboard = ({ onNavigate }: { onNavigate: (page: string) => void }) 
       case 'analytics':
         return <AnalyticsTab />;
       case 'system':
-        return <SystemTab health={systemHealth} />;
+        return <SystemTab />;
       default:
         return <OverviewTab stats={stats} health={systemHealth} activity={recentActivity} />;
     }
