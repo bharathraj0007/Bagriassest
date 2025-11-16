@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, X, Leaf, User } from 'lucide-react';
+import { Menu, X, Leaf, User, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface NavbarProps {
