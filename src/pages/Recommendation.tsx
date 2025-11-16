@@ -463,7 +463,9 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-600">
-                          {Math.round(crop.confidence)}%
+                          {crop.confidence !== undefined && crop.confidence !== null
+                            ? Math.round(crop.confidence)
+                            : 0}%
                         </div>
                         <div className="text-xs text-gray-500">Confidence</div>
                       </div>
