@@ -20,6 +20,8 @@ import {
   Package,
   Activity
 } from 'lucide-react';
+import CropManager from '../components/admin/CropManager';
+import PriceMonitor from '../components/admin/PriceMonitor';
 
 interface DashboardStats {
   totalUsers: number;
