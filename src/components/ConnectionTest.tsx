@@ -112,7 +112,7 @@ export default function ConnectionTest() {
     // Test functions
     for (const func of requiredFunctions) {
       try {
-        const response = await fetch(`${supabase.supabaseUrl}/functions/v1/${func}`, {
+        const response = await fetch(`${supabaseUrl}/functions/v1/${func}`, {
           method: 'OPTIONS'
         });
         setStatus(prev => ({
