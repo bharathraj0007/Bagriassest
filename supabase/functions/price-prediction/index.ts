@@ -137,44 +137,76 @@ function setCachedData(key: string, data: any, ttl: number = CACHE_TTL): void {
   cache.set(key, { data, expires: Date.now() + (ttl * 1000) });
 }
 
-// Fetch real commodity price from Commodities API
-async function fetchCommodityPrice(symbol: string): Promise<CommodityData | null> {
+// Get current crop price from Indian database
+function getCropPriceFromDatabase(cropName: string): CommodityData | null {
   try {
-    const cacheKey = `commodity_${symbol}`;
+    const cacheKey = `crop_${cropName}`;
     const cached = getCachedData(cacheKey);
     if (cached) return cached;
 
-    const response = await fetch(
-      `${COMMODITIES_API_BASE}/latest?access_key=${COMMODITIES_API_KEY}&base=USD&symbols=${symbol}`,
-      {
-        headers: {
-          "User-Agent": "AgriculturalApp/1.0"
-        }
-      }
-    );
-
-    if (!response.ok) {
-      console.warn(`Commodities API error for ${symbol}: ${response.status}`);
+    const cropData = INDIAN_CROP_PRICES[cropName];
+    if (!cropData) {
+      console.warn(`Crop "${cropName}" not found in Indian price database`);
       return null;
     }
 
-    const data = await response.json();
+    const commodityData: CommodityData = {
+      symbol: cropName,
+      price: cropData.basePrice,
+      currency: "INR",
+      timestamp: new Date().toISOString()
+    };
 
-    if (data.rates && data.rates[symbol]) {
-      const commodityData: CommodityData = {
-        symbol,
-        price: parseFloat(data.rates[symbol]),
-        currency: "USD",
-        timestamp: new Date().toISOString()
-      };
-
-      setCachedData(cacheKey, commodityData);
-      return commodityData;
-    }
-
-    return null;
+    setCachedData(cacheKey, commodityData, CACHE_TTL);
+    return commodityData;
   } catch (error) {
-    console.error(`Error fetching commodity price for ${symbol}:`, error);
+    console.error(`Error getting crop price for ${cropName}:`, error);
+    return null;
+  }
+}
+
+// Simulate fetching real-time market data with variations
+async function getRealTimePriceVariation(cropName: string, basePrice: number): Promise<number> {
+  const cacheKey = `variation_${cropName}`;
+  const cached = getCachedData(cacheKey);
+  if (cached) return cached;
+
+  // Simulate market variations (-3% to +3%) based on typical Indian market fluctuations
+  const variationPercent = (Math.random() - 0.5) * 0.06; // ±3%
+  const marketNoise = (Math.random() - 0.5) * 0.02; // ±1% noise
+  const totalVariation = variationPercent + marketNoise;
+
+  const variedPrice = basePrice * (1 + totalVariation);
+
+  // Cache for 15 minutes to simulate real-time updates
+  setCachedData(cacheKey, variedPrice, 900);
+
+  return variedPrice;
+}
+
+// Fetch supplemental data from FCA (Food Corporation of India) API if available
+async function fetchFCAPriceData(cropName: string): Promise<number | null> {
+  try {
+    // Note: FCA doesn't have a public API, but this simulates what it would look like
+    // In a real implementation, you might need to web scrape or use official data feeds
+
+    const cacheKey = `fca_${cropName}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
+
+    // Simulate FCA data with slight variations from base prices
+    const baseData = INDIAN_CROP_PRICES[cropName];
+    if (!baseData) return null;
+
+    // FCA prices are typically 5-10% lower than retail prices
+    const fcaPrice = baseData.basePrice * (0.90 + Math.random() * 0.05);
+
+    // Cache for 6 hours
+    setCachedData(cacheKey, fcaPrice, 21600);
+
+    return fcaPrice;
+  } catch (error) {
+    console.error(`Error fetching FCA data for ${cropName}:`, error);
     return null;
   }
 }
