@@ -5,13 +5,7 @@ import {
   Plus,
   Edit,
   Trash2,
-  Filter,
-  Download,
-  Upload,
-  Eye,
-  AlertCircle,
-  CheckCircle,
-  XCircle
+  Download
 } from 'lucide-react';
 
 interface Crop {
