@@ -45,22 +45,32 @@ export const AdminAuthProvider: React.FC<AdminAuthProviderProps> = ({ children }
       const { data: { session } } = await supabase.auth.getSession();
 
       if (session) {
+        console.log('Checking session for admin:', session.user.email);
+
         // Check if user has admin role
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('role')
+          .select('role, full_name, is_active')
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.role && ['admin', 'super_admin'].includes(profile.role)) {
+        if (profileError) {
+          console.error('Profile fetch error during session check:', profileError);
+          return;
+        }
+
+        if (profile?.role && ['admin', 'super_admin'].includes(profile.role) && profile.is_active) {
           const adminData: Admin = {
             id: session.user.id,
             email: session.user.email!,
-            full_name: session.user.user_metadata?.full_name || 'Admin',
+            full_name: profile.full_name || session.user.user_metadata?.full_name || 'Admin',
             role: profile.role as 'admin' | 'super_admin',
             created_at: session.user.created_at
           };
+          console.log('Admin session restored:', adminData);
           setAdmin(adminData);
+        } else {
+          console.log('Session exists but user is not admin or inactive:', profile?.role);
         }
       }
     } catch (error) {
