@@ -155,103 +155,450 @@ function calculateAirQualityImpact(aqi: number): number {
   return 0.30;
 }
 
-function calculateNeuralNetworkScore(input: InputData, crop: any): { score: number; reasons: string[] } {
-  const reasons: string[] = [];
-  let weights = {
-    ph: 0.20,
-    soil_type: 0.18,
-    temperature: 0.22,
-    humidity: 0.15,
-    rainfall: 0.20,
-    season: 0.05
+// Advanced Crop Recommendation Algorithm Components
+
+interface EnvironmentalFactors {
+  soil_ph: number;
+  soil_type: string;
+  temperature: number;
+  humidity: number;
+  air_quality: number;
+  rainfall: number;
+  season: string;
+}
+
+interface CropFeatures {
+  environmental_score: number;
+  economic_score: number;
+  risk_score: number;
+  sustainability_score: number;
+  rotation_compatibility: number;
+  climate_adaptation: number;
+  market_demand: number;
+}
+
+interface AdvancedRecommendationResult {
+  score: number;
+  confidence: number;
+  reasons: string[];
+  risk_factors: string[];
+  sustainability_score: number;
+  economic_potential: number;
+  rotation_suggestions: string[];
+  irrigation_needs: string;
+  fertilizer_needs: string;
+  pest_risk: string;
+  market_outlook: string;
+}
+
+// Enhanced input validation with agricultural constraints
+function validateAdvancedInput(input: EnvironmentalFactors): { isValid: boolean; warnings: string[]; constraints: any } {
+  const warnings: string[] = [];
+  const constraints = {};
+
+  // Check for extreme weather conditions
+  if (input.temperature > 45) {
+    warnings.push("Extreme temperature detected - heat stress likely");
+    constraints["heat_stress"] = true;
+  }
+  if (input.temperature < 5) {
+    warnings.push("Very low temperature - frost damage possible");
+    constraints["frost_risk"] = true;
+  }
+
+  // Check water stress conditions
+  if (input.rainfall < 300) {
+    warnings.push("Low rainfall - drought-resistant crops recommended");
+    constraints["irrigation_required"] = true;
+  }
+  if (input.rainfall > 3000) {
+    warnings.push("High rainfall - waterlogging risk for some crops");
+    constraints["drainage_needed"] = true;
+  }
+
+  // Check air quality for sensitive crops
+  if (input.air_quality > 200) {
+    warnings.push("Poor air quality - avoid sensitive crops");
+    constraints["air_pollution_stress"] = true;
+  }
+
+  // Check soil pH for nutrient availability
+  if (input.soil_ph < 4.5) {
+    warnings.push("Very acidic soil - nutrient deficiencies likely");
+    constraints["soil_amendment_required"] = "lime";
+  }
+  if (input.soil_ph > 8.5) {
+    warnings.push("Very alkaline soil - micronutrient deficiencies likely");
+    constraints["soil_amendment_required"] = "organic_matter";
+  }
+
+  return { isValid: true, warnings, constraints };
+}
+
+// Machine Learning-Inspired Feature Extraction
+function extractCropFeatures(input: EnvironmentalFactors, crop: any): CropFeatures {
+  // Environmental suitability with advanced scoring
+  const envFactors = calculateEnvironmentalFactors(input, crop);
+
+  // Economic viability scoring
+  const econScore = calculateEconomicViability(crop, input);
+
+  // Risk assessment
+  const riskScore = assessCultivationRisk(input, crop);
+
+  // Sustainability scoring
+  const sustainabilityScore = calculateSustainabilityScore(crop, input);
+
+  // Crop rotation compatibility
+  const rotationScore = calculateRotationCompatibility(crop, input);
+
+  // Climate adaptation scoring
+  const climateScore = calculateClimateAdaptationScore(crop, input);
+
+  // Market demand scoring
+  const marketScore = calculateMarketDemandScore(crop);
+
+  return {
+    environmental_score: envFactors.score,
+    economic_score: econScore,
+    risk_score: riskScore,
+    sustainability_score: sustainabilityScore,
+    rotation_compatibility: rotationScore,
+    climate_adaptation: climateScore,
+    market_demand: marketScore
+  };
+}
+
+// Advanced Environmental Factor Calculation
+function calculateEnvironmentalFactors(input: EnvironmentalFactors, crop: any): { score: number; details: any } {
+  // Dynamic weight adjustment based on crop type and region
+  const baseWeights = {
+    ph: 0.18,
+    soil_type: 0.20,
+    temperature: 0.24,
+    humidity: 0.16,
+    rainfall: 0.22
   };
 
-  let phScore = calculateGaussianScore(input.soil_ph, crop.optimal_ph_min, crop.optimal_ph_max, 1.5);
+  // Adjust weights based on crop category
+  let adjustedWeights = { ...baseWeights };
 
-  if (phScore >= 0.95) {
-    reasons.push("Optimal pH range");
-  } else if (phScore >= 0.7) {
-    reasons.push("Acceptable pH range");
-  } else if (phScore >= 0.4) {
-    reasons.push("Marginal pH compatibility");
+  if (isRiceCrop(crop.name)) {
+    adjustedWeights.rainfall = 0.28;
+    adjustedWeights.humidity = 0.20;
+    adjustedWeights.temperature = 0.16;
+  } else if (isSpiceCrop(crop.name)) {
+    adjustedWeights.humidity = 0.22;
+    adjustedWeights.temperature = 0.20;
+    adjustedWeights.soil_type = 0.24;
+  } else if (isMilletCrop(crop.name)) {
+    adjustedWeights.temperature = 0.28;
+    adjustedWeights.rainfall = 0.16;
+    adjustedWeights.soil_type = 0.20;
   }
 
-  let soilTypeScore = 0;
-  if (crop.suitable_soil_types && crop.suitable_soil_types.includes(input.soil_type)) {
-    soilTypeScore = 1.0;
-    reasons.push("Ideal soil type");
-  } else if (crop.suitable_soil_types && crop.suitable_soil_types.length > 0) {
-    const soilSimilarity = calculateSoilSimilarity(input.soil_type, crop.suitable_soil_types);
-    soilTypeScore = soilSimilarity;
-    if (soilSimilarity > 0.5) {
-      reasons.push("Compatible soil type");
+  // Enhanced pH scoring with nutrient availability consideration
+  const phScore = calculateAdvancedPHScore(input.soil_ph, crop);
+
+  // Enhanced soil type scoring with water retention and drainage
+  const soilScore = calculateAdvancedSoilScore(input.soil_type, crop, input.rainfall);
+
+  // Temperature scoring with growing degree days consideration
+  const tempScore = calculateAdvancedTemperatureScore(input.temperature, crop);
+
+  // Humidity scoring with disease pressure consideration
+  const humidityScore = calculateAdvancedHumidityScore(input.humidity, crop);
+
+  // Rainfall scoring with water requirement and flood risk
+  const rainfallScore = calculateAdvancedRainfallScore(input.rainfall, crop);
+
+  const rawScore =
+    adjustedWeights.ph * phScore +
+    adjustedWeights.soil_type * soilScore +
+    adjustedWeights.temperature * tempScore +
+    adjustedWeights.humidity * humidityScore +
+    adjustedWeights.rainfall * rainfallScore;
+
+  // Air quality penalty for sensitive crops
+  const airQualityPenalty = calculateAirQualityPenalty(input.air_quality, crop);
+  const finalScore = rawScore * (1 - airQualityPenalty);
+
+  return {
+    score: Math.min(1.0, finalScore),
+    details: {
+      ph_score: phScore,
+      soil_score: soilScore,
+      temp_score: tempScore,
+      humidity_score: humidityScore,
+      rainfall_score: rainfallScore,
+      air_quality_penalty: airQualityPenalty,
+      weights: adjustedWeights
     }
+  };
+}
+
+// Advanced pH scoring with nutrient availability matrix
+function calculateAdvancedPHScore(ph: number, crop: any): number {
+  // Nutrient availability curves for different pH ranges
+  const nutrientAvailability = {
+    nitrogen: ph >= 6.0 && ph <= 8.0 ? 1.0 : (ph < 6.0 ? 0.3 + (ph / 6.0) * 0.7 : 0.9 - (ph - 8.0) * 0.1),
+    phosphorus: ph >= 6.5 && ph <= 7.5 ? 1.0 : (ph < 6.5 ? 0.2 + (ph / 6.5) * 0.8 : 0.8 - (ph - 7.5) * 0.16),
+    potassium: ph >= 5.5 && ph <= 8.5 ? 1.0 : (ph < 5.5 ? 0.1 + (ph / 5.5) * 0.9 : 0.9 - (ph - 8.5) * 0.06),
+    micronutrients: ph >= 5.5 && ph <= 6.5 ? 1.0 : (ph < 5.5 ? 0.6 : ph > 6.5 ? 0.7 - (ph - 6.5) * 0.1 : 1.0)
+  };
+
+  // Calculate overall nutrient availability
+  const overallAvailability = (
+    nutrientAvailability.nitrogen * 0.3 +
+    nutrientAvailability.phosphorus * 0.3 +
+    nutrientAvailability.potassium * 0.2 +
+    nutrientAvailability.micronutrients * 0.2
+  );
+
+  // Basic Gaussian score for optimal range
+  const basicScore = calculateGaussianScore(ph, crop.optimal_ph_min, crop.optimal_ph_max, 1.2);
+
+  // Combine basic score with nutrient availability
+  return Math.min(1.0, basicScore * 0.6 + overallAvailability * 0.4);
+}
+
+// Advanced soil scoring with water dynamics
+function calculateAdvancedSoilScore(soilType: string, crop: any, rainfall: number): number {
+  const exactMatch = crop.suitable_soil_types?.includes(soilType);
+  if (exactMatch) return 1.0;
+
+  const soilSimilarity = calculateSoilSimilarity(soilType, crop.suitable_soil_types || []);
+
+  // Water retention and drainage characteristics
+  const soilCharacteristics = getSoilWaterCharacteristics(soilType);
+  const cropWaterNeeds = getCropWaterRequirements(crop.name);
+
+  // Calculate water compatibility
+  let waterCompatibility = 1.0;
+  if (rainfall < 800) { // Low rainfall area
+    waterCompatibility = soilCharacteristics.water_retention > 0.6 ? 1.0 : 0.7;
+  } else if (rainfall > 2000) { // High rainfall area
+    waterCompatibility = soilCharacteristics.drainage > 0.6 ? 1.0 : 0.6;
   }
 
-  let tempScore = calculateGaussianScore(input.temperature, crop.optimal_temp_min, crop.optimal_temp_max, 2.0);
+  return Math.min(1.0, soilSimilarity * 0.7 + waterCompatibility * 0.3);
+}
 
-  if (tempScore >= 0.95) {
-    reasons.push("Perfect temperature");
-  } else if (tempScore >= 0.7) {
-    reasons.push("Suitable temperature");
-  } else if (tempScore >= 0.4) {
-    reasons.push("Manageable temperature");
+// Advanced temperature scoring with growing degree days
+function calculateAdvancedTemperatureScore(temp: number, crop: any): number {
+  const basicScore = calculateGaussianScore(temp, crop.optimal_temp_min, crop.optimal_temp_max, 1.8);
+
+  // Growing degree days calculation
+  const gddRequirement = getCropGDDRequirement(crop.name);
+  const seasonalGDD = calculateSeasonalGDD(temp, crop.season);
+
+  let gddScore = 1.0;
+  if (gddRequirement && seasonalGDD) {
+    const gddRatio = seasonalGDD / gddRequirement;
+    gddScore = gddRatio >= 1.0 ? 1.0 : Math.max(0.3, gddRatio);
   }
 
-  let humidityScore = calculateGaussianScore(input.humidity, crop.optimal_humidity_min, crop.optimal_humidity_max, 2.0);
+  // Heat stress consideration
+  const heatStressFactor = temp > 35 ? Math.max(0.5, 1.0 - (temp - 35) * 0.05) : 1.0;
 
-  if (humidityScore >= 0.95) {
-    reasons.push("Ideal humidity");
-  } else if (humidityScore >= 0.7) {
-    reasons.push("Good humidity level");
-  }
+  return Math.min(1.0, basicScore * 0.6 + gddScore * 0.3 + heatStressFactor * 0.1);
+}
 
-  let rainfallScore = calculateGaussianScore(input.rainfall, crop.optimal_rainfall_min, crop.optimal_rainfall_max, 2.5);
+// Advanced humidity scoring with disease pressure
+function calculateAdvancedHumidityScore(humidity: number, crop: any): number {
+  const basicScore = calculateGaussianScore(humidity, crop.optimal_humidity_min, crop.optimal_humidity_max, 2.0);
 
-  if (rainfallScore >= 0.95) {
-    reasons.push("Optimal rainfall");
-  } else if (rainfallScore >= 0.7) {
-    reasons.push("Adequate rainfall");
-  } else if (rainfallScore >= 0.4) {
-    reasons.push("Requires irrigation support");
-  }
+  // Disease pressure calculation
+  const diseaseRisk = calculateDiseaseRisk(humidity, crop.name);
+  const diseaseFactor = Math.max(0.3, 1.0 - diseaseRisk * 0.3);
 
-  let seasonScore = 0;
-  if (crop.season === input.season) {
-    seasonScore = 1.0;
-    reasons.push("Perfect season");
-  } else if (crop.season === "Year-round") {
-    seasonScore = 0.9;
-    reasons.push("Year-round crop");
-  } else {
-    seasonScore = 0.3;
-  }
+  return Math.min(1.0, basicScore * 0.7 + diseaseFactor * 0.3);
+}
 
-  let rawScore =
-    weights.ph * phScore +
-    weights.soil_type * soilTypeScore +
-    weights.temperature * tempScore +
-    weights.humidity * humidityScore +
-    weights.rainfall * rainfallScore +
-    weights.season * seasonScore;
+// Advanced rainfall scoring with flood and drought consideration
+function calculateAdvancedRainfallScore(rainfall: number, crop: any): number {
+  const basicScore = calculateGaussianScore(rainfall, crop.optimal_rainfall_min, crop.optimal_rainfall_max, 2.5);
 
-  const airQualityFactor = calculateAirQualityImpact(input.air_quality);
-  rawScore *= airQualityFactor;
+  // Flood risk assessment
+  const floodRisk = rainfall > 2500 ? Math.min(0.8, (rainfall - 2500) / 2000) : 0;
 
-  if (airQualityFactor < 0.9) {
-    reasons.push(`Air quality impact: ${Math.round(airQualityFactor * 100)}%`);
-  }
+  // Drought risk assessment
+  const droughtRisk = rainfall < 500 ? Math.min(0.8, (500 - rainfall) / 500) : 0;
 
-  const normalizedScore = sigmoid((rawScore - 0.5) * 8) * 100;
+  const riskFactor = 1.0 - (floodRisk + droughtRisk) * 0.5;
 
-  const synergy = calculateSynergy(phScore, soilTypeScore, tempScore, humidityScore, rainfallScore, seasonScore);
-  const finalScore = Math.min(100, normalizedScore * (0.85 + synergy * 0.15));
+  return Math.min(1.0, basicScore * 0.8 + riskFactor * 0.2);
+}
 
-  if (reasons.length === 0) {
-    reasons.push("Challenging growing conditions");
-  }
+// Multi-Criteria Decision Making (MCDM) using TOPSIS method
+function calculateMCDMScore(features: CropFeatures): { score: number; ranking: string[] } {
+  // Criteria weights for TOPSIS
+  const criteriaWeights = {
+    environmental_score: 0.30,
+    economic_score: 0.25,
+    sustainability_score: 0.20,
+    risk_score: 0.15,
+    climate_adaptation: 0.10
+  };
 
-  return { score: finalScore, reasons };
+  // Normalize features
+  const maxValues = {
+    environmental_score: 1.0,
+    economic_score: 1.0,
+    sustainability_score: 1.0,
+    risk_score: 1.0,
+    climate_adaptation: 1.0
+  };
+
+  // Calculate weighted normalized decision matrix
+  const weightedScores = {
+    environmental: features.environmental_score * criteriaWeights.environmental_score,
+    economic: features.economic_score * criteriaWeights.economic_score,
+    sustainability: features.sustainability_score * criteriaWeights.sustainability_score,
+    risk: features.risk_score * criteriaWeights.risk_score,
+    climate: features.climate_adaptation * criteriaWeights.climate_adaptation
+  };
+
+  // Calculate Euclidean distance from ideal and negative ideal solutions
+  const idealDistance = Math.sqrt(
+    Math.pow(1 - weightedScores.environmental, 2) +
+    Math.pow(1 - weightedScores.economic, 2) +
+    Math.pow(1 - weightedScores.sustainability, 2) +
+    Math.pow(1 - weightedScores.risk, 2) +
+    Math.pow(1 - weightedScores.climate, 2)
+  );
+
+  const negativeIdealDistance = Math.sqrt(
+    Math.pow(0 - weightedScores.environmental, 2) +
+    Math.pow(0 - weightedScores.economic, 2) +
+    Math.pow(0 - weightedScores.sustainability, 2) +
+    Math.pow(0 - weightedScores.risk, 2) +
+    Math.pow(0 - weightedScores.climate, 2)
+  );
+
+  // TOPSIS score
+  const topsisScore = negativeIdealDistance / (idealDistance + negativeIdealDistance);
+
+  // Performance ranking
+  const rankings = Object.entries(weightedScores)
+    .sort(([,a], [,b]) => b - a)
+    .map(([criterion, score]) => `${criterion}: ${(score * 100).toFixed(1)}%`);
+
+  return { score: topsisScore, ranking: rankings };
+}
+
+// Economic viability calculation
+function calculateEconomicViability(crop: any, input: EnvironmentalFactors): number {
+  // Base economic score (would integrate with real market data)
+  const cropValue = getCropMarketValue(crop.name);
+  const yieldPotential = calculateYieldPotential(crop, input);
+  const inputCosts = calculateInputCosts(crop, input);
+  const marketDemand = features?.market_demand || 0.7;
+
+  // Simple ROI calculation
+  const revenue = cropValue * yieldPotential;
+  const profit = revenue - inputCosts;
+  const roi = inputCosts > 0 ? profit / inputCosts : 0;
+
+  // Normalize to 0-1 scale
+  const normalizedROI = Math.max(0, Math.min(1, roi / 2)); // Assume 200% ROI as max
+
+  return normalizedROI * 0.6 + marketDemand * 0.4;
+}
+
+// Risk assessment calculation
+function assessCultivationRisk(input: EnvironmentalFactors, crop: any): number {
+  let totalRisk = 0;
+
+  // Climate risk
+  const climateRisk = assessClimateRisk(input, crop);
+  totalRisk += climateRisk * 0.3;
+
+  // Pest and disease risk
+  const pestRisk = assessPestRisk(input, crop);
+  totalRisk += pestRisk * 0.25;
+
+  // Market risk
+  const marketRisk = assessMarketRisk(crop.name);
+  totalRisk += marketRisk * 0.2;
+
+  // Environmental risk
+  const envRisk = assessEnvironmentalRisk(input, crop);
+  totalRisk += envRisk * 0.15;
+
+  // Operational risk
+  const operationalRisk = assessOperationalRisk(crop, input);
+  totalRisk += operationalRisk * 0.1;
+
+  // Convert to 0-1 scale (higher = lower risk)
+  return Math.max(0, Math.min(1, 1 - totalRisk));
+}
+
+// Sustainability scoring
+function calculateSustainabilityScore(crop: any, input: EnvironmentalFactors): number {
+  // Water usage efficiency
+  const waterEfficiency = calculateWaterEfficiency(crop, input.rainfall);
+
+  // Soil health impact
+  const soilHealthImpact = calculateSoilHealthImpact(crop, input.soil_type);
+
+  // Biodiversity impact
+  const biodiversityImpact = calculateBiodiversityImpact(crop);
+
+  // Carbon footprint
+  const carbonFootprint = calculateCarbonFootprint(crop);
+
+  // Input dependency
+  const inputDependency = calculateInputDependency(crop);
+
+  return (
+    waterEfficiency * 0.25 +
+    soilHealthImpact * 0.25 +
+    biodiversityImpact * 0.2 +
+    (1 - carbonFootprint) * 0.15 +
+    (1 - inputDependency) * 0.15
+  );
+}
+
+// Main advanced crop recommendation function
+function calculateAdvancedCropRecommendation(
+  input: EnvironmentalFactors,
+  crop: any
+): AdvancedRecommendationResult {
+  // Validate and extract constraints
+  const validation = validateAdvancedInput(input);
+  const features = extractCropFeatures(input, crop);
+  const mcdmResult = calculateMCDMScore(features);
+
+  // Generate comprehensive reasons
+  const reasons = generateRecommendationReasons(features, validation, crop);
+
+  // Generate risk factors
+  const riskFactors = generateRiskFactors(features, input, crop);
+
+  // Generate additional recommendations
+  const rotationSuggestions = generateRotationSuggestions(crop);
+  const irrigationNeeds = generateIrrigationRecommendation(crop, input.rainfall);
+  const fertilizerNeeds = generateFertilizerRecommendation(crop, input.soil_ph);
+  const pestRisk = assessPestRiskLevel(features.risk_score, input.humidity);
+  const marketOutlook = generateMarketOutlook(crop.name, features.market_demand);
+
+  // Calculate final confidence
+  const confidence = calculateRecommendationConfidence(features, validation);
+
+  return {
+    score: Math.round(mcdmResult.score * 100),
+    confidence: Math.round(confidence * 100),
+    reasons,
+    risk_factors: riskFactors,
+    sustainability_score: Math.round(features.sustainability_score * 100),
+    economic_potential: Math.round(features.economic_score * 100),
+    rotation_suggestions: rotationSuggestions,
+    irrigation_needs: irrigationNeeds,
+    fertilizer_needs: fertilizerNeeds,
+    pest_risk: pestRisk,
+    market_outlook: marketOutlook
+  };
 }
 
 function calculateSoilSimilarity(inputSoil: string, suitableSoils: string[]): number {
