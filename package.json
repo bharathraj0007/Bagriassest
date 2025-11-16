@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "setup-supabase": "./scripts/setup-supabase.sh",
+    "test-connection": "node scripts/test-connection.js",
+    "deploy-functions": "./scripts/deploy-functions.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
