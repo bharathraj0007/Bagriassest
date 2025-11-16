@@ -25,6 +25,101 @@ interface InputData {
   season: string;
 }
 
+interface ValidationError {
+  field: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+// Input validation rules
+const VALIDATION_RULES = {
+  soil_ph: { min: 0.0, max: 14.0, required: true },
+  temperature: { min: -10, max: 50, required: true },
+  humidity: { min: 0, max: 100, required: true },
+  rainfall: { min: 0, max: 5000, required: true },
+  air_quality: { min: 0, max: 500, required: true }
+};
+
+const VALID_SOIL_TYPES = [
+  "Clay", "Sandy", "Loamy", "Black", "Alluvial", "Sandy Loam", "Red",
+  "Laterite", "Coastal", "Forest", "Volcanic", "Saline", "Peaty", "Chalky"
+];
+
+const VALID_SEASONS = [
+  "Kharif", "Rabi", "Year-round", "Summer", "Winter", "Monsoon"
+];
+
+// Enhanced input validation function
+function validateInput(inputData: any): { isValid: boolean; errors: ValidationError[] } {
+  const errors: ValidationError[] = [];
+
+  // Validate soil pH
+  if (typeof inputData.soil_ph !== 'number' || isNaN(inputData.soil_ph)) {
+    errors.push({ field: "soil_ph", message: "Soil pH must be a valid number", severity: "error" });
+  } else if (inputData.soil_ph < VALIDATION_RULES.soil_ph.min || inputData.soil_ph > VALIDATION_RULES.soil_ph.max) {
+    errors.push({ field: "soil_ph", message: `Soil pH must be between ${VALIDATION_RULES.soil_ph.min} and ${VALIDATION_RULES.soil_ph.max}`, severity: "error" });
+  }
+
+  // Validate soil type
+  if (!inputData.soil_type || typeof inputData.soil_type !== 'string') {
+    errors.push({ field: "soil_type", message: "Soil type is required", severity: "error" });
+  } else if (!VALID_SOIL_TYPES.includes(inputData.soil_type)) {
+    errors.push({
+      field: "soil_type",
+      message: `Soil type "${inputData.soil_type}" not recognized. Valid types: ${VALID_SOIL_TYPES.join(", ")}`,
+      severity: "warning"
+    });
+  }
+
+  // Validate temperature
+  if (typeof inputData.temperature !== 'number' || isNaN(inputData.temperature)) {
+    errors.push({ field: "temperature", message: "Temperature must be a valid number", severity: "error" });
+  } else {
+    if (inputData.temperature < VALIDATION_RULES.temperature.min || inputData.temperature > VALIDATION_RULES.temperature.max) {
+      errors.push({
+        field: "temperature",
+        message: `Temperature ${inputData.temperature}°C is outside typical agricultural range (${VALIDATION_RULES.temperature.min}°C to ${VALIDATION_RULES.temperature.max}°C)`,
+        severity: "warning"
+      });
+    }
+  }
+
+  // Validate humidity
+  if (typeof inputData.humidity !== 'number' || isNaN(inputData.humidity)) {
+    errors.push({ field: "humidity", message: "Humidity must be a valid number", severity: "error" });
+  } else if (inputData.humidity < VALIDATION_RULES.humidity.min || inputData.humidity > VALIDATION_RULES.humidity.max) {
+    errors.push({ field: "humidity", message: `Humidity must be between ${VALIDATION_RULES.humidity.min}% and ${VALIDATION_RULES.humidity.max}%`, severity: "error" });
+  }
+
+  // Validate rainfall
+  if (typeof inputData.rainfall !== 'number' || isNaN(inputData.rainfall)) {
+    errors.push({ field: "rainfall", message: "Rainfall must be a valid number", severity: "error" });
+  } else if (inputData.rainfall < VALIDATION_RULES.rainfall.min || inputData.rainfall > VALIDATION_RULES.rainfall.max) {
+    errors.push({ field: "rainfall", message: `Rainfall must be between ${VALIDATION_RULES.rainfall.min}mm and ${VALIDATION_RULES.rainfall.max}mm annually`, severity: "error" });
+  }
+
+  // Validate air quality
+  if (typeof inputData.air_quality !== 'number' || isNaN(inputData.air_quality)) {
+    errors.push({ field: "air_quality", message: "Air quality index must be a valid number", severity: "error" });
+  } else if (inputData.air_quality < VALIDATION_RULES.air_quality.min || inputData.air_quality > VALIDATION_RULES.air_quality.max) {
+    errors.push({ field: "air_quality", message: `Air quality index must be between ${VALIDATION_RULES.air_quality.min} and ${VALIDATION_RULES.air_quality.max}`, severity: "error" });
+  }
+
+  // Validate season
+  if (!inputData.season || typeof inputData.season !== 'string') {
+    errors.push({ field: "season", message: "Season is required", severity: "error" });
+  } else if (!VALID_SEASONS.includes(inputData.season)) {
+    errors.push({
+      field: "season",
+      message: `Season "${inputData.season}" not recognized. Valid seasons: ${VALID_SEASONS.join(", ")}`,
+      severity: "warning"
+    });
+  }
+
+  const hasErrors = errors.some(e => e.severity === "error");
+  return { isValid: !hasErrors, errors };
+}
+
 function sigmoid(x: number): number {
   return 1 / (1 + Math.exp(-x));
 }
