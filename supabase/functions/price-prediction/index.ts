@@ -37,28 +37,73 @@ interface PredictionResult {
   price_history?: Array<{ date: string; price: number }>;
 }
 
-// Enhanced crop coverage with commodities API symbols
-const CROP_COMMODITY_MAP: Record<string, string> = {
-  "Rice": "RICE",
-  "Wheat": "WHEAT",
-  "Cotton": "COTTON",
-  "Sugarcane": "SUGAR",
-  "Maize": "CORN",
-  "Soybean": "SOYBEAN",
-  "Potato": "POTATO",
-  "Tomato": "TOMATO",
-  "Black Pepper": "PEPPER",
-  "Cardamom": "CARDAMOM",
-  "Coconut": "COCONUT",
-  "Coffee": "COFFEE",
-  "Tea": "TEA",
-  "Turmeric": "TURMERIC",
-  "Ginger": "GINGER",
-  "Cashew Nut": "CASHEW",
-  "Rubber": "RUBBER",
-  "Finger Millet": "MILLET",
-  "Pearl Millet": "PEARL_MILLET",
-  "Red Gram": "RED_GRAM"
+// Indian crop price database (average retail prices per kg/quintal in INR)
+// Based on actual Indian market data from government sources
+const INDIAN_CROP_PRICES: Record<string, { basePrice: number; unit: string; category: string }> = {
+  // Food Grains (per kg)
+  "Rice": { basePrice: 42.77, unit: "kg", category: "cereals" },
+  "Wheat": { basePrice: 31.46, unit: "kg", category: "cereals" },
+  "Maize": { basePrice: 22.50, unit: "kg", category: "cereals" },
+  "Bajra (Pearl Millet)": { basePrice: 28.30, unit: "kg", category: "cereals" },
+  "Jowar (Sorghum)": { basePrice: 26.80, unit: "kg", category: "cereals" },
+  "Finger Millet": { basePrice: 35.20, unit: "kg", category: "cereals" },
+
+  // Pulses (per kg)
+  "Red Gram (Tur Dal)": { basePrice: 127.59, unit: "kg", category: "pulses" },
+  "Green Gram (Moong Dal)": { basePrice: 112.11, unit: "kg", category: "pulses" },
+  "Bengal Gram (Chana Dal)": { basePrice: 86.88, unit: "kg", category: "pulses" },
+  "Black Gram (Urad Dal)": { basePrice: 118.13, unit: "kg", category: "pulses" },
+  "Lentils (Masoor Dal)": { basePrice: 88.11, unit: "kg", category: "pulses" },
+
+  // Vegetables (per kg)
+  "Potato": { basePrice: 25.40, unit: "kg", category: "vegetables" },
+  "Tomato": { basePrice: 42.30, unit: "kg", category: "vegetables" },
+  "Onion": { basePrice: 38.70, unit: "kg", category: "vegetables" },
+  "Brinjal": { basePrice: 35.60, unit: "kg", category: "vegetables" },
+  "Okra (Ladyfinger)": { basePrice: 45.20, unit: "kg", category: "vegetables" },
+  "Cabbage": { basePrice: 22.40, unit: "kg", category: "vegetables" },
+  "Cauliflower": { basePrice: 32.80, unit: "kg", category: "vegetables" },
+
+  // Fruits (per kg)
+  "Mango": { basePrice: 85.50, unit: "kg", category: "fruits" },
+  "Banana": { basePrice: 45.30, unit: "kg", category: "fruits" },
+  "Apple": { basePrice: 156.80, unit: "kg", category: "fruits" },
+  "Orange": { basePrice: 68.40, unit: "kg", category: "fruits" },
+  "Grapes": { basePrice: 92.60, unit: "kg", category: "fruits" },
+  "Pomegranate": { basePrice: 145.20, unit: "kg", category: "fruits" },
+
+  // Spices (per kg)
+  "Turmeric": { basePrice: 156.30, unit: "kg", category: "spices" },
+  "Chilli": { basePrice: 125.80, unit: "kg", category: "spices" },
+  "Coriander": { basePrice: 98.40, unit: "kg", category: "spices" },
+  "Cumin": { basePrice: 268.50, unit: "kg", category: "spices" },
+  "Black Pepper": { basePrice: 542.30, unit: "kg", category: "spices" },
+  "Cardamom": { basePrice: 1250.60, unit: "kg", category: "spices" },
+  "Clove": { basePrice: 680.40, unit: "kg", category: "spices" },
+  "Cinnamon": { basePrice: 385.70, unit: "kg", category: "spices" },
+
+  // Cash Crops (per quintal)
+  "Cotton": { basePrice: 6250, unit: "quintal", category: "fibers" },
+  "Sugarcane": { basePrice: 315, unit: "quintal", category: "sugarcane" },
+  "Jute": { basePrice: 3850, unit: "quintal", category: "fibers" },
+
+  // Oilseeds (per quintal)
+  "Groundnut": { basePrice: 5850, unit: "quintal", category: "oilseeds" },
+  "Mustard": { basePrice: 4850, unit: "quintal", category: "oilseeds" },
+  "Soybean": { basePrice: 4250, unit: "quintal", category: "oilseeds" },
+  "Sunflower": { basePrice: 5650, unit: "quintal", category: "oilseeds" },
+
+  // Commercial Crops
+  "Coffee": { basePrice: 285, unit: "kg", category: "beverages" },
+  "Tea": { basePrice: 185, unit: "kg", category: "beverages" },
+  "Rubber": { basePrice: 145, unit: "kg", category: "rubber" },
+  "Coconut": { basePrice: 28, unit: "piece", category: "nuts" },
+  "Cashew Nut": { basePrice: 685, unit: "kg", category: "nuts" },
+
+  // Livestock Products
+  "Milk": { basePrice: 58.90, unit: "liter", category: "dairy" },
+  "Eggs": { basePrice: 6.20, unit: "piece", category: "poultry" },
+  "Chicken (Broiler)": { basePrice: 185, unit: "kg", category: "poultry" }
 };
 
 // Market location factors for Indian markets
