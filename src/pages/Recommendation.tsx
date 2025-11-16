@@ -192,12 +192,12 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
 
         await supabase.from('recommendations').insert({
           user_id: user.id,
-          soil_ph: parseFloat(formData.soilPh),
+          soil_ph: parseFloat(formData.soilPh) || 0,
           soil_type: formData.soilType,
-          temperature: parseFloat(formData.temperature),
-          humidity: parseFloat(formData.humidity),
-          air_quality: parseFloat(formData.airQuality),
-          rainfall: parseFloat(formData.rainfall),
+          temperature: parseFloat(formData.temperature) || 0,
+          humidity: parseFloat(formData.humidity) || 0,
+          air_quality: parseFloat(formData.airQuality) || 0,
+          rainfall: parseFloat(formData.rainfall) || 0,
           location: formData.location,
           latitude: parseFloat(formData.latitude) || null,
           longitude: parseFloat(formData.longitude) || null,
