@@ -121,11 +121,11 @@ In **Edge Functions** → **Settings**, add these environment variables:
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# For Price Prediction
-COMMODITIES_API_KEY=your-commodities-api-key
-
-# For Weather Data
+# For Weather Data (optional)
 WAQI_API_KEY=your-waqi-api-key
+
+# Note: Price prediction now uses FREE Indian government databases
+# No API key required for pricing - uses AGMARKNET, e-NAM, FCI data
 ```
 
 ## 🔌 API Keys Setup
