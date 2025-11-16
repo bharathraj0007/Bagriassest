@@ -7,9 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-// Commodities API configuration
-const COMMODITIES_API_KEY = Deno.env.get("COMMODITIES_API_KEY") || "demo";
-const COMMODITIES_API_BASE = "https://commodities-api.com/api/v1";
+// Free Indian Government APIs
+const AGMARKNET_API_BASE = "https://agmarknet.gov.in";
+const ENAM_API_BASE = "https://enam.gov.in";
+const FCA_API_BASE = "https://fcainfoweb.nic.in";
 const CACHE_TTL = 3600; // 1 hour cache
 
 // Simple in-memory cache for serverless functions
