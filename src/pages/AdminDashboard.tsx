@@ -418,7 +418,7 @@ const OverviewTab = ({ stats, health, activity }: {
   );
 };
 
-// Placeholder components for other tabs
+// Enhanced tab components
 const UsersTab = () => (
   <div className="bg-white rounded-lg shadow p-6">
     <h2 className="text-xl font-bold mb-4">User Management</h2>
@@ -426,19 +426,9 @@ const UsersTab = () => (
   </div>
 );
 
-const CropsTab = () => (
-  <div className="bg-white rounded-lg shadow p-6">
-    <h2 className="text-xl font-bold mb-4">Crop Management</h2>
-    <p className="text-gray-600">Crop management interface will be implemented here.</p>
-  </div>
-);
+const CropsTab = () => <CropManager />;
 
-const PricingTab = () => (
-  <div className="bg-white rounded-lg shadow p-6">
-    <h2 className="text-xl font-bold mb-4">Price Monitoring</h2>
-    <p className="text-gray-600">Price monitoring interface will be implemented here.</p>
-  </div>
-);
+const PricingTab = () => <PriceMonitor />;
 
 const SchemesTab = () => (
   <div className="bg-white rounded-lg shadow p-6">
