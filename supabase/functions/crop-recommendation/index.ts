@@ -345,7 +345,27 @@ function calculateSynergy(...scores: number[]): number {
   return consistency;
 }
 
+// Logging function for system monitoring
+async function logSystemEvent(functionName: string, level: "INFO" | "WARN" | "ERROR", message: string, metadata?: any) {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    await supabase.from("system_logs").insert({
+      function_name: functionName,
+      log_level: level,
+      message: message,
+      metadata: metadata || {}
+    });
+  } catch (error) {
+    console.error("Failed to log system event:", error);
+  }
+}
+
 Deno.serve(async (req: Request) => {
+  const functionName = "crop-recommendation";
+
   if (req.method === "OPTIONS") {
     return new Response(null, {
       status: 200,
@@ -360,28 +380,107 @@ Deno.serve(async (req: Request) => {
 
     const inputData: InputData = await req.json();
 
-    const { data: crops, error } = await supabase
-      .from("crops")
-      .select("*");
+    // Enhanced input validation
+    const validation = validateInput(inputData);
+    if (!validation.isValid) {
+      const errorMessages = validation.errors
+        .filter(e => e.severity === "error")
+        .map(e => e.message);
 
-    if (error) throw error;
+      await logSystemEvent(functionName, "ERROR", "Invalid input parameters", {
+        errors: validation.errors,
+        input_data: inputData
+      });
 
-    if (!crops || crops.length === 0) {
-      throw new Error("No crops found in database");
+      return new Response(
+        JSON.stringify({
+          error: "Invalid input parameters",
+          details: errorMessages,
+          all_errors: validation.errors
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
-    const scoredCrops: CropScore[] = crops.map((crop: any) => {
-      const { score, reasons } = calculateNeuralNetworkScore(inputData, crop);
+    // Log warnings if any
+    const warnings = validation.errors.filter(e => e.severity === "warning");
+    if (warnings.length > 0) {
+      await logSystemEvent(functionName, "WARN", "Input validation warnings", {
+        warnings: warnings,
+        input_data: inputData
+      });
+    }
 
-      return {
-        name: crop.name,
-        score: Math.round(score * 100) / 100,
-        reason: reasons.join(", "),
-        description: crop.description || "Agricultural crop",
-        growth_duration: crop.growth_duration_days || 90,
-      };
+    // Fetch crops data with retry mechanism
+    let crops = null;
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries && !crops) {
+      try {
+        const { data, error } = await supabase
+          .from("crops")
+          .select("*");
+
+        if (error) throw error;
+        crops = data;
+
+        if (!crops || crops.length === 0) {
+          throw new Error("No crops found in database");
+        }
+      } catch (dbError) {
+        retryCount++;
+        console.warn(`Database query failed (attempt ${retryCount}/${maxRetries}):`, dbError);
+
+        if (retryCount >= maxRetries) {
+          await logSystemEvent(functionName, "ERROR", "Database connection failed", {
+            error: dbError.message,
+            retry_attempts: maxRetries
+          });
+
+          // Fallback to hardcoded crop data for critical functionality
+          crops = getFallbackCropData();
+          await logSystemEvent(functionName, "WARN", "Using fallback crop data", {
+            crop_count: crops.length
+          });
+        } else {
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        }
+      }
+    }
+
+    // Process recommendations
+    const scoredCrops: CropScore[] = crops.map((crop: any) => {
+      try {
+        const { score, reasons } = calculateNeuralNetworkScore(inputData, crop);
+
+        return {
+          name: crop.name,
+          score: Math.round(score * 100) / 100,
+          reason: reasons.join(", "),
+          description: crop.description || "Agricultural crop",
+          growth_duration: crop.growth_duration_days || 90,
+        };
+      } catch (cropError) {
+        console.warn(`Error calculating score for crop ${crop.name}:`, cropError);
+        return {
+          name: crop.name,
+          score: 0,
+          reason: "Error calculating crop compatibility",
+          description: crop.description || "Agricultural crop",
+          growth_duration: crop.growth_duration_days || 90,
+        };
+      }
     });
 
+    // Sort and get top recommendations
     const topRecommendations = scoredCrops
       .sort((a, b) => b.score - a.score)
       .slice(0, 5)
@@ -393,13 +492,31 @@ Deno.serve(async (req: Request) => {
         growth_duration: crop.growth_duration,
       }));
 
+    // Calculate input summary
+    const airQualityStatus = inputData.air_quality <= 100 ? "Good" :
+                            inputData.air_quality <= 200 ? "Moderate" : "Poor";
+
+    const inputSummary = {
+      conditions: `pH: ${inputData.soil_ph}, Temp: ${inputData.temperature}°C, Humidity: ${inputData.humidity}%, Rainfall: ${inputData.rainfall}mm`,
+      air_quality_status: airQualityStatus,
+      soil_type: inputData.soil_type,
+      season: inputData.season,
+      validation_warnings: warnings.map(w => w.message)
+    };
+
+    // Log successful recommendation
+    await logSystemEvent(functionName, "INFO", "Crop recommendation completed", {
+      input_conditions: inputSummary.conditions,
+      top_recommendations: topRecommendations.map(r => r.name),
+      confidence_scores: topRecommendations.map(r => r.confidence)
+    });
+
     return new Response(
       JSON.stringify({
         recommendations: topRecommendations,
-        input_summary: {
-          conditions: `pH: ${inputData.soil_ph}, Temp: ${inputData.temperature}°C, Humidity: ${inputData.humidity}%, Rainfall: ${inputData.rainfall}mm`,
-          air_quality_status: inputData.air_quality <= 100 ? "Good" : inputData.air_quality <= 200 ? "Moderate" : "Poor"
-        }
+        input_summary: inputSummary,
+        total_crops_analyzed: crops.length,
+        validation_warnings: warnings
       }),
       {
         headers: {
@@ -408,10 +525,20 @@ Deno.serve(async (req: Request) => {
         },
       }
     );
+
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Critical error in crop recommendation:", error);
+
+    await logSystemEvent(functionName, "ERROR", "Critical error in crop recommendation", {
+      error: error.message,
+      stack: error.stack
+    });
+
     return new Response(
-      JSON.stringify({ error: error.message || "An error occurred during crop recommendation" }),
+      JSON.stringify({
+        error: error.message || "An error occurred during crop recommendation",
+        request_id: crypto.randomUUID()
+      }),
       {
         status: 500,
         headers: {
@@ -422,3 +549,41 @@ Deno.serve(async (req: Request) => {
     );
   }
 });
+
+// Fallback crop data for emergency situations
+function getFallbackCropData(): any[] {
+  return [
+    {
+      name: "Rice",
+      scientific_name: "Oryza sativa",
+      description: "Staple cereal crop grown in flooded fields",
+      season: "Kharif",
+      optimal_ph_min: 5.5,
+      optimal_ph_max: 7.0,
+      optimal_temp_min: 20,
+      optimal_temp_max: 35,
+      optimal_humidity_min: 70,
+      optimal_humidity_max: 90,
+      optimal_rainfall_min: 1000,
+      optimal_rainfall_max: 2500,
+      suitable_soil_types: ["Clay", "Loamy"],
+      growth_duration_days: 120
+    },
+    {
+      name: "Wheat",
+      scientific_name: "Triticum aestivum",
+      description: "Major cereal crop for bread making",
+      season: "Rabi",
+      optimal_ph_min: 6.0,
+      optimal_ph_max: 7.5,
+      optimal_temp_min: 12,
+      optimal_temp_max: 25,
+      optimal_humidity_min: 50,
+      optimal_humidity_max: 70,
+      optimal_rainfall_min: 400,
+      optimal_rainfall_max: 800,
+      suitable_soil_types: ["Loamy", "Sandy Loam"],
+      growth_duration_days: 110
+    }
+  ];
+}
