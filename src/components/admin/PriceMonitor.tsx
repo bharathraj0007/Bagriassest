@@ -136,26 +136,7 @@ const PriceMonitor = () => {
     });
   };
 
-  const preparePriceTrendData = () => {
-    const cropGroups = filteredData.reduce((acc, item) => {
-      if (!acc[item.crop_name]) {
-        acc[item.crop_name] = [];
-      }
-      acc[item.crop_name].push(item);
-      return acc;
-    }, {} as Record<string, PriceData[]>);
-
-    return Object.entries(cropGroups).map(([cropName, items]) => {
-      const latest = items[0]; // Most recent
-      return {
-        name: cropName,
-        current: latest.current_price,
-        predicted: latest.predicted_price,
-        confidence: latest.confidence_level
-      };
-    }).slice(0, 10); // Top 10 crops
-  };
-
+  
   const uniqueCrops = Array.from(new Set(priceData.map(item => item.crop_name)));
   const uniqueLocations = Array.from(new Set(priceData.map(item => item.market_location)));
 
