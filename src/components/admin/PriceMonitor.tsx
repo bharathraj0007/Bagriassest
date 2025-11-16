@@ -128,6 +128,7 @@ const PriceMonitor = () => {
 
       return {
         name: date,
+        value: dayData.length,
         predictions: dayData.length,
         avgConfidence: dayData.length > 0
           ? dayData.reduce((sum, d) => sum + d.confidence_level, 0) / dayData.length
