@@ -255,23 +255,84 @@ function calculateNeuralNetworkScore(input: InputData, crop: any): { score: numb
 }
 
 function calculateSoilSimilarity(inputSoil: string, suitableSoils: string[]): number {
+  // Enhanced soil compatibility matrix for South Indian soils
   const soilCompatibility: Record<string, string[]> = {
-    "Clay": ["Black", "Alluvial"],
-    "Sandy": ["Sandy Loam"],
-    "Loamy": ["Sandy Loam", "Alluvial"],
-    "Black": ["Clay", "Alluvial"],
-    "Alluvial": ["Loamy", "Black", "Clay"],
-    "Sandy Loam": ["Loamy", "Sandy"]
+    "Clay": ["Black", "Alluvial", "Black Cotton"],
+    "Sandy": ["Sandy Loam", "Coastal", "Saline"],
+    "Loamy": ["Sandy Loam", "Alluvial", "Red", "Laterite"],
+    "Black": ["Clay", "Alluvial", "Black Cotton", "Peaty"],
+    "Alluvial": ["Loamy", "Black", "Clay", "Sandy Loam"],
+    "Sandy Loam": ["Loamy", "Sandy", "Alluvial", "Red"],
+    "Red": ["Laterite", "Loamy", "Sandy Loam", "Volcanic"],
+    "Laterite": ["Red", "Loamy", "Volcanic", "Clay"],
+    "Coastal": ["Sandy", "Saline", "Alluvial"],
+    "Forest": ["Loamy", "Volcanic", "Peaty"],
+    "Volcanic": ["Forest", "Laterite", "Loamy", "Red"],
+    "Black Cotton": ["Black", "Clay", "Alluvial"],
+    "Saline": ["Coastal", "Sandy"],
+    "Peaty": ["Forest", "Black"],
+    "Chalky": ["Loamy", "Sandy Loam"]
   };
 
+  // Check for exact match first
+  if (suitableSoils.includes(inputSoil)) {
+    return 1.0;
+  }
+
+  // Check for soil compatibility
+  let maxScore = 0;
   for (const suitable of suitableSoils) {
     const compatible = soilCompatibility[suitable] || [];
     if (compatible.includes(inputSoil)) {
-      return 0.7;
+      maxScore = Math.max(maxScore, 0.8);
+    }
+
+    // Check if compatible soils include each other (bidirectional)
+    const inputCompatible = soilCompatibility[inputSoil] || [];
+    if (inputCompatible.includes(suitable)) {
+      maxScore = Math.max(maxScore, 0.7);
     }
   }
 
-  return 0.3;
+  // Enhanced soil classification scoring
+  const soilClassification: Record<string, string> = {
+    "Clay": "heavy",
+    "Sandy": "light",
+    "Loamy": "medium",
+    "Black": "heavy",
+    "Alluvial": "medium",
+    "Sandy Loam": "medium-light",
+    "Red": "medium",
+    "Laterite": "medium",
+    "Coastal": "light",
+    "Forest": "medium",
+    "Volcanic": "medium-heavy",
+    "Black Cotton": "heavy",
+    "Saline": "light",
+    "Peaty": "heavy",
+    "Chalky": "medium"
+  };
+
+  // Fallback to soil texture similarity
+  if (maxScore === 0) {
+    const inputClass = soilClassification[inputSoil] || "unknown";
+    let matchingClasses = 0;
+
+    for (const suitable of suitableSoils) {
+      const suitableClass = soilClassification[suitable] || "unknown";
+      if (inputClass === suitableClass) {
+        matchingClasses++;
+      }
+    }
+
+    if (matchingClasses > 0) {
+      maxScore = 0.4 + (matchingClasses / suitableSoils.length) * 0.3;
+    } else {
+      maxScore = 0.2; // Minimal score for completely incompatible soils
+    }
+  }
+
+  return Math.min(1.0, maxScore);
 }
 
 function calculateSynergy(...scores: number[]): number {
