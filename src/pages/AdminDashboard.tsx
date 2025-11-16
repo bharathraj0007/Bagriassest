@@ -448,7 +448,7 @@ const AnalyticsTab = () => (
   </div>
 );
 
-const SystemTab = ({ health }: { health: SystemHealth }) => (
+const SystemTab = () => (
   <div className="bg-white rounded-lg shadow p-6">
     <h2 className="text-xl font-bold mb-4">System Settings</h2>
     <p className="text-gray-600">System configuration and settings will be implemented here.</p>
