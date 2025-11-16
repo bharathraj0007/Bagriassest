@@ -68,7 +68,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <AdminAuthProvider>
+        <AppContent />
+      </AdminAuthProvider>
     </AuthProvider>
   );
 }
