@@ -1337,26 +1337,56 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Process recommendations
-    const scoredCrops: CropScore[] = crops.map((crop: any) => {
+    // Process recommendations with advanced algorithm
+    const scoredCrops = crops.map((crop: any) => {
       try {
-        const { score, reasons } = calculateNeuralNetworkScore(inputData, crop);
+        // Convert input data to environmental factors
+        const envFactors: EnvironmentalFactors = {
+          soil_ph: inputData.soil_ph,
+          soil_type: inputData.soil_type,
+          temperature: inputData.temperature,
+          humidity: inputData.humidity,
+          air_quality: inputData.air_quality,
+          rainfall: inputData.rainfall,
+          season: inputData.season
+        };
+
+        // Use advanced recommendation algorithm
+        const advancedResult = calculateAdvancedCropRecommendation(envFactors, crop);
 
         return {
           name: crop.name,
-          score: Math.round(score * 100) / 100,
-          reason: reasons.join(", "),
+          score: advancedResult.score,
+          confidence: advancedResult.confidence,
+          reason: advancedResult.reasons.join(", "),
           description: crop.description || "Agricultural crop",
           growth_duration: crop.growth_duration_days || 90,
+          sustainability_score: advancedResult.sustainability_score,
+          economic_potential: advancedResult.economic_potential,
+          risk_factors: advancedResult.risk_factors,
+          rotation_suggestions: advancedResult.rotation_suggestions,
+          irrigation_needs: advancedResult.irrigation_needs,
+          fertilizer_needs: advancedResult.fertilizer_needs,
+          pest_risk: advancedResult.pest_risk,
+          market_outlook: advancedResult.market_outlook
         };
       } catch (cropError) {
         console.warn(`Error calculating score for crop ${crop.name}:`, cropError);
         return {
           name: crop.name,
           score: 0,
+          confidence: 0,
           reason: "Error calculating crop compatibility",
           description: crop.description || "Agricultural crop",
           growth_duration: crop.growth_duration_days || 90,
+          sustainability_score: 0,
+          economic_potential: 0,
+          risk_factors: ["Calculation error"],
+          rotation_suggestions: [],
+          irrigation_needs: "Unknown",
+          fertilizer_needs: "Unknown",
+          pest_risk: "Unknown",
+          market_outlook: "Unknown"
         };
       }
     });
@@ -1367,10 +1397,18 @@ Deno.serve(async (req: Request) => {
       .slice(0, 5)
       .map((crop) => ({
         name: crop.name,
-        confidence: crop.score,
+        confidence: crop.confidence,
         reason: crop.reason,
         description: crop.description,
         growth_duration: crop.growth_duration,
+        sustainability_score: crop.sustainability_score,
+        economic_potential: crop.economic_potential,
+        risk_factors: crop.risk_factors,
+        rotation_suggestions: crop.rotation_suggestions,
+        irrigation_needs: crop.irrigation_needs,
+        fertilizer_needs: crop.fertilizer_needs,
+        pest_risk: crop.pest_risk,
+        market_outlook: crop.market_outlook
       }));
 
     // Calculate input summary
