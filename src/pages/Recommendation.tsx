@@ -98,14 +98,33 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/weather-data?action=weather&latitude=${latitude}&longitude=${longitude}`;
       const response = await fetch(apiUrl);
+
+      if (!response.ok) {
+        throw new Error(`Weather API error: ${response.status}`);
+      }
+
       const data = await response.json();
+
+      // Add null checks to prevent NaN errors
+      const temperature = data.temperature !== undefined && data.temperature !== null
+        ? Math.round(data.temperature).toString()
+        : '';
+      const humidity = data.humidity !== undefined && data.humidity !== null
+        ? Math.round(data.humidity).toString()
+        : '';
+      const airQuality = data.aqi !== undefined && data.aqi !== null
+        ? Math.round(data.aqi).toString()
+        : '';
+      const rainfall = data.rainfall !== undefined && data.rainfall !== null
+        ? (Math.round(data.rainfall * 10) / 10).toString()
+        : '';
 
       setFormData((prev) => ({
         ...prev,
-        temperature: Math.round(data.temperature).toString(),
-        humidity: Math.round(data.humidity).toString(),
-        airQuality: Math.round(data.aqi).toString(),
-        rainfall: (Math.round(data.rainfall * 10) / 10).toString(),
+        temperature,
+        humidity,
+        airQuality,
+        rainfall,
       }));
     } catch (error) {
       console.error('Weather fetch error:', error);
