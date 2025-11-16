@@ -19,6 +19,7 @@ export default function Navbar({ onNavigate, currentPage }: NavbarProps) {
     { name: 'Government Schemes', id: 'government-schemes' },
     { name: 'Marketing', id: 'marketing' },
     { name: 'Support', id: 'support' },
+    { name: 'Admin', id: 'admin-login', icon: Settings, adminOnly: true },
   ];
 
   const handleSignOut = async () => {
