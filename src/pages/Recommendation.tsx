@@ -473,7 +473,11 @@ export default function Recommendation({ onNavigate }: RecommendationProps) {
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                       <div
                         className="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all"
-                        style={{ width: `${crop.confidence}%` }}
+                        style={{
+                          width: `${crop.confidence !== undefined && crop.confidence !== null
+                            ? Math.max(0, Math.min(100, crop.confidence))
+                            : 0}%`
+                        }}
                       ></div>
                     </div>
                     <p className="text-gray-600 text-sm">{crop.reason}</p>
