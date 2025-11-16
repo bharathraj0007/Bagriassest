@@ -211,22 +211,6 @@ async function fetchFCAPriceData(cropName: string): Promise<number | null> {
   }
 }
 
-// Get USD to INR exchange rate
-async function getExchangeRateUSDToINR(): Promise<number> {
-  try {
-    const cacheKey = "usd_to_inr";
-    const cached = getCachedData(cacheKey);
-    if (cached) return cached;
-
-    // For demo purposes, use a fixed rate. In production, use a real forex API
-    const exchangeRate = 83.5; // As of late 2024
-    setCachedData(cacheKey, exchangeRate, 86400); // Cache for 24 hours
-    return exchangeRate;
-  } catch (error) {
-    console.error("Error fetching exchange rate:", error);
-    return 83.5; // Fallback rate
-  }
-}
 
 // Get historical price data for trend analysis
 async function getHistoricalPrices(cropName: string, days: number = 30): Promise<Array<{ date: string; price: number }>> {
